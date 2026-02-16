@@ -8,8 +8,8 @@ import pandas as pd
 # =========================================================
 # APP CONFIG
 # =========================================================
-st.set_page_config(layout="wide", page_title="EMOP 2026 – Suivi")
-st.title("🌍 EMOP 2026 – Geospatial Monitoring Dashboard")
+st.set_page_config(layout="wide", page_title="RICH – Suivi")
+st.title("🌍 RICH– Geospatial Monitoring Dashboard")
 
 # =========================================================
 # USERS AND REGIONS
@@ -225,6 +225,7 @@ st.markdown("""
 **- Abdoul Karim DIAWARA**, Chef de Division Cartographie et SIG  
 **- Dr. Mahamadou CAMARA, PhD – Geomatics Engineering**  
 """)
+
 
 
 
