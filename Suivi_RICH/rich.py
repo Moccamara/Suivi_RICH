@@ -189,17 +189,18 @@ if csv_file is not None:
         csv_se_selected = st.sidebar.selectbox("CSV num_se", csv_se_list)
 
         # Apply filter
-        if csv_se_selected == "No filter":
-            csv_points_filtered = points_in_commune
-        else:
-            csv_points_filtered = points_in_commune[
-                points_in_commune["num_se"].astype(str) == str(csv_se_selected)
-            ]
+if csv_se_selected == "No filter":
+    csv_points_filtered = points_in_commune
+else:
+    csv_points_filtered = points_in_commune[
+        points_in_commune["num_se"] == csv_se_selected
+    ]
 
-        st.sidebar.success(f"✅ {len(points_in_commune)} points in selected commune")
+st.sidebar.success(f"✅ {len(csv_points_filtered)} points in selected commune")
 
-    else:
-        st.sidebar.error("CSV must contain latitude & longitude columns")
+else:
+    st.sidebar.error("CSV must contain latitude & longitude columns")
+
 
 # =========================================================
 # MAP
@@ -259,6 +260,7 @@ st.markdown("""
 **- Abdoul Karim DIAWARA**, Chef de Division Cartographie et SIG  
 **- Dr. Mahamadou CAMARA, PhD – Geomatics Engineering**  
 """)
+
 
 
 
