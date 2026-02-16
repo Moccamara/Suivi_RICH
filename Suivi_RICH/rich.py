@@ -15,13 +15,10 @@ st.title("🌍 EMOP 2026 – Geospatial Monitoring Dashboard")
 # USERS AND REGIONS
 # =========================================================
 USERS = {
-    "roland_emop": {"password": "emop2026rd", "role": "User", "regions": ["Kayes","Kita","Nioro","Sikasso","Koutiala"]},
-    "fanta_emop": {"password": "emop2026ft", "role": "User", "regions": ["Koulikoro","Bamako"]},
-    "boubacar_emop": {"password": "emop2026bk", "role": "User", "regions": ["Dioila","Nara"]},
-    "mohamed_emop": {"password": "emop2026mf", "role": "User", "regions": ["Bougouni","Segou","San","Mopti"]},
-    "mamari_emop": {"password": "emop2026mt", "role": "User", "regions": ["Bandiagara","Douentza","Tombouctou"]},
-    "modibo_emop": {"password": "emop2026mb", "role": "User", "regions": ["Taoudenit","Menaka","Kidal","Gao"]},
-    "admin": {"password": "admin2026", "role": "Admin", "regions": []}
+    "roland_rich": {"password": "rich2026rd", "role": "User", "regions": ["Kayes","Kita"]},
+    "fanta_rich": {"password": "emop2026ft", "role": "User", "regions": ["Bafoulabe","Kenieba"]},
+    "boubacar_rich": {"password": "emop2026bk", "role": "User", "regions": ["Yelimane","Nioro","Diema"]},
+    "admin": {"password": "admin2026", "role": "Admin", "cercles": []}
 }
 
 # =========================================================
@@ -64,14 +61,14 @@ if not st.session_state.auth_ok:
 # =========================================================
 @st.cache_data(show_spinner=False)
 def load_se_data():
-    gdf = gpd.read_file("Suivi_emop/data/emop2026.geojson")
+    gdf = gpd.read_file("Suivi_RICH/data/SE_Test.geojson")
     if gdf.crs is None:
         gdf = gdf.set_crs(epsg=4326)
     else:
         gdf = gdf.to_crs(epsg=4326)
 
     gdf.columns = [c.strip() for c in gdf.columns]  # keep exact names
-    for col in ["LREG_NEW","LCER_NEW","LCOM_NEW","num_se","pop_se"]:
+    for col in ["lregion","lcercle","lcommune","num_se","pop_se"]:
         if col not in gdf.columns:
             gdf[col] = None
 
@@ -81,14 +78,14 @@ def load_se_data():
 try:
     gdf = load_se_data()
 except Exception as e:
-    st.error(f"❌ Unable to load EMOP GeoJSON: {e}")
+    st.error(f"❌ Unable to load RICH GeoJSON: {e}")
     st.stop()
 
 # =========================================================
 # SIDEBAR HEADER
 # =========================================================
 with st.sidebar:
-    st.image("Suivi_emop/logo/emop.png", width=200)
+    st.image("Suivi_RICH/logo/CVD_Mali.jpeg", width=200)
     st.markdown(f"**User:** {st.session_state.username} ({st.session_state.user_role})")
     if st.button("Logout"):
         logout()
@@ -106,20 +103,20 @@ def unique_clean(series):
 st.sidebar.markdown("### 🗂️ Attribute Query")
 
 # Region
-all_regions = unique_clean(gdf["LREG_NEW"])
+all_regions = unique_clean(gdf["lregion"])
 regions = all_regions if st.session_state.user_role=="Admin" else [r for r in all_regions if r in st.session_state.accessible_regions]
 region = st.sidebar.selectbox("Region", regions)
-gdf_r = gdf[gdf["LREG_NEW"] == region]
+gdf_r = gdf[gdf["lregion"] == region]
 
 # Cercle
-cercles = unique_clean(gdf_r["LCER_NEW"])
+cercles = unique_clean(gdf_r["lcercle"])
 cercle = st.sidebar.selectbox("Cercle", cercles)
-gdf_c = gdf_r[gdf_r["LCER_NEW"] == cercle]
+gdf_c = gdf_r[gdf_r["lcercle"] == cercle]
 
 # Commune
-communes = unique_clean(gdf_c["LCOM_NEW"])
+communes = unique_clean(gdf_c["lcommune"])
 commune = st.sidebar.selectbox("Commune", communes)
-gdf_commune = gdf_c[gdf_c["LCOM_NEW"] == commune]
+gdf_commune = gdf_c[gdf_c["lcommune"] == commune]
 
 # SE
 se_list = ["No filter"] + unique_clean(gdf_commune["num_se"])
@@ -168,7 +165,7 @@ if csv_file is not None:
 
         st.sidebar.success(f"✅ {len(points_in_commune)} points in selected commune")
     else:
-        st.sidebar.error("CSV must contain Latitude & Longitude")
+        st.sidebar.error("CSV must contain latitude & longitude")
 
 # =========================================================
 # MAP
@@ -228,6 +225,7 @@ st.markdown("""
 **- Abdoul Karim DIAWARA**, Chef de Division Cartographie et SIG  
 **- Dr. Mahamadou CAMARA, PhD – Geomatics Engineering**  
 """)
+
 
 
 
