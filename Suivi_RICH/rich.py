@@ -188,7 +188,7 @@ if csv_file is not None:
 
         csv_se_selected = st.sidebar.selectbox("CSV num_se", csv_se_list)
 
-        # Apply filter
+       # Apply filter
 if csv_se_selected == "No filter":
     csv_points_filtered = points_in_commune
 else:
@@ -200,7 +200,6 @@ st.sidebar.success(f"✅ {len(csv_points_filtered)} points in selected commune")
 
 else:
     st.sidebar.error("CSV must contain latitude & longitude columns")
-
 
 # =========================================================
 # MAP
@@ -260,6 +259,7 @@ st.markdown("""
 **- Abdoul Karim DIAWARA**, Chef de Division Cartographie et SIG  
 **- Dr. Mahamadou CAMARA, PhD – Geomatics Engineering**  
 """)
+
 
 
 
