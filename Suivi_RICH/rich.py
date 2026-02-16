@@ -126,9 +126,6 @@ gdf_se = gdf_commune if se_selected=="No filter" else gdf_commune[gdf_commune["n
 # =========================================================
 # CSV UPLOAD AND FILTER BY CSV num_se BASED ON SELECTED COMMUNE
 # =========================================================
-# =========================================================
-# CSV UPLOAD AND FILTER BY CSV num_se BASED ON SELECTED COMMUNE
-# =========================================================
 st.sidebar.markdown("### 📥 Upload CSV Points")
 csv_file = st.sidebar.file_uploader("Upload CSV", type=["csv"])
 csv_points_filtered = None
@@ -204,7 +201,6 @@ if csv_file is not None:
     else:
         st.sidebar.error("CSV must contain latitude & longitude columns")
 
-
 # =========================================================
 # MAP
 # =========================================================
@@ -241,7 +237,7 @@ if not gdf_se.empty:
                 color="red",
                 fill=True,
                 fill_opacity=0.9,
-                tooltip=f"CSV SE: {r.get('num_se','N/A')}"
+                tooltip=f"Point Concession: {r.get('num_se','N/A')}"
             ).add_to(csv_group)
         csv_group.add_to(m)
 
@@ -263,6 +259,7 @@ st.markdown("""
 **- Abdoul Karim DIAWARA**, Chef de Division Cartographie et SIG  
 **- Dr. Mahamadou CAMARA, PhD – Geomatics Engineering**  
 """)
+
 
 
 
