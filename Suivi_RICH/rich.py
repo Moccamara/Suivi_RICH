@@ -126,46 +126,84 @@ gdf_se = gdf_commune if se_selected=="No filter" else gdf_commune[gdf_commune["n
 # =========================================================
 # CSV UPLOAD AND FILTER BY CSV num_se BASED ON SELECTED COMMUNE
 # =========================================================
+# =========================================================
+# CSV UPLOAD AND FILTER BY CSV num_se BASED ON SELECTED COMMUNE
+# =========================================================
 st.sidebar.markdown("### 📥 Upload CSV Points")
 csv_file = st.sidebar.file_uploader("Upload CSV", type=["csv"])
 csv_points_filtered = None
 
 if csv_file is not None:
-    # df = pd.read_csv(csv_file)
-    df = pd.read_csv(csv_file, encoding="latin1")
+    try:
+        # Read CSV with correct encoding + separator
+        df = pd.read_csv(
+            csv_file,
+            encoding="latin1",
+            sep=";"
+        )
+    except Exception as e:
+        st.sidebar.error(f"Error reading CSV: {e}")
+        st.stop()
+
+    # Clean column names
     df.columns = df.columns.str.lower().str.strip()
-    if {"latitude","longitude"}.issubset(df.columns):
+
+    # Check required columns
+    if {"latitude", "longitude"}.issubset(df.columns):
+
+        # Ensure numeric coordinates
+        df["latitude"] = pd.to_numeric(df["latitude"], errors="coerce")
+        df["longitude"] = pd.to_numeric(df["longitude"], errors="coerce")
+
+        # Drop rows with invalid coordinates
+        df = df.dropna(subset=["latitude", "longitude"])
+
         # Create GeoDataFrame
         gpts = gpd.GeoDataFrame(
             df,
             geometry=gpd.points_from_xy(df["longitude"], df["latitude"]),
-            crs=4326
+            crs="EPSG:4326"
         )
+
         st.session_state.points_gdf = gpts
 
-        # Keep only points inside the selected commune polygon(s)
+        # Reproject commune to match points CRS
         gdf_commune_proj = gdf_commune.to_crs(gpts.crs)
+
+        # Spatial join
         points_in_commune = gpd.sjoin(
-            gpts, gdf_commune_proj[["geometry"]], how="inner", predicate="within"
+            gpts,
+            gdf_commune_proj[["geometry"]],
+            how="inner",
+            predicate="within"
         )
 
-        # CSV num_se selection based on points in commune
+        # num_se filtering
         if "num_se" in points_in_commune.columns:
-            csv_se_list = ["No filter"] + sorted(points_in_commune["num_se"].dropna().astype(str).unique())
+            csv_se_list = ["No filter"] + sorted(
+                points_in_commune["num_se"]
+                .dropna()
+                .astype(str)
+                .unique()
+            )
         else:
             csv_se_list = ["No filter"]
 
         csv_se_selected = st.sidebar.selectbox("CSV num_se", csv_se_list)
 
-        # Filter points
-        csv_points_filtered = (
-            points_in_commune if csv_se_selected == "No filter"
-            else points_in_commune[points_in_commune["num_se"].astype(str) == str(csv_se_selected)]
-        )
+        # Apply filter
+        if csv_se_selected == "No filter":
+            csv_points_filtered = points_in_commune
+        else:
+            csv_points_filtered = points_in_commune[
+                points_in_commune["num_se"].astype(str) == str(csv_se_selected)
+            ]
 
         st.sidebar.success(f"✅ {len(points_in_commune)} points in selected commune")
+
     else:
-        st.sidebar.error("CSV must contain latitude & longitude")
+        st.sidebar.error("CSV must contain latitude & longitude columns")
+
 
 # =========================================================
 # MAP
@@ -225,6 +263,7 @@ st.markdown("""
 **- Abdoul Karim DIAWARA**, Chef de Division Cartographie et SIG  
 **- Dr. Mahamadou CAMARA, PhD – Geomatics Engineering**  
 """)
+
 
 
 
