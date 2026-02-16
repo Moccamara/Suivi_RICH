@@ -131,9 +131,9 @@ csv_file = st.sidebar.file_uploader("Upload CSV", type=["csv"])
 csv_points_filtered = None
 
 if csv_file is not None:
-    df = pd.read_csv(csv_file)
+    # df = pd.read_csv(csv_file)
+    df = pd.read_csv(csv_file, encoding="latin1")
     df.columns = df.columns.str.lower().str.strip()
-    
     if {"latitude","longitude"}.issubset(df.columns):
         # Create GeoDataFrame
         gpts = gpd.GeoDataFrame(
@@ -225,6 +225,7 @@ st.markdown("""
 **- Abdoul Karim DIAWARA**, Chef de Division Cartographie et SIG  
 **- Dr. Mahamadou CAMARA, PhD – Geomatics Engineering**  
 """)
+
 
 
 
