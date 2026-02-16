@@ -237,7 +237,7 @@ if not gdf_se.empty:
                 color="red",
                 fill=True,
                 fill_opacity=0.9,
-                tooltip=f"Point Concession: {r.get('num_se','N/A')}"
+                tooltip=f"Point Concession: SE {r.get('num_se','N/A')}"
             ).add_to(csv_group)
         csv_group.add_to(m)
 
@@ -259,6 +259,7 @@ st.markdown("""
 **- Abdoul Karim DIAWARA**, Chef de Division Cartographie et SIG  
 **- Dr. Mahamadou CAMARA, PhD – Geomatics Engineering**  
 """)
+
 
 
 
