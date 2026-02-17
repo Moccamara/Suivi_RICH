@@ -126,12 +126,7 @@ gdf_se = gdf_commune if se_selected=="No filter" else gdf_commune[gdf_commune["n
 # =========================================================
 # CSV UPLOAD AND FILTER BY CSV num_se BASED ON SELECTED COMMUNE
 # =========================================================
-import io  # Make sure this is at the top of your script
-
-# =========================================================
-# CSV UPLOAD AND FILTER BY CSV num_se BASED ON SELECTED COMMUNE
-# =========================================================
-import io  # Make sure this is at the top of your script
+import io  # make sure at the top
 
 # =========================================================
 # CSV UPLOAD AND FILTER BY CSV num_se BASED ON SELECTED COMMUNE
@@ -190,10 +185,11 @@ if csv_file is not None:
         # ---- SPATIAL FILTER INSIDE SELECTED COMMUNE ----
         gdf_commune_proj = gdf_commune.to_crs(gpts.crs)
 
-        # Keep only geometry + num_se and ensure column exists
+        # Ensure num_se column exists
         if "num_se" not in gdf_commune_proj.columns:
             gdf_commune_proj["num_se"] = None
 
+        # Spatial join: keep only points within the selected commune
         points_in_commune = gpd.sjoin(
             gpts,
             gdf_commune_proj[["geometry", "num_se"]],
@@ -213,8 +209,8 @@ if csv_file is not None:
         # Safe string column for filtering
         points_in_commune["num_se_str"] = points_in_commune["num_se"].astype(str)
 
-        # Get valid SE values for filtering
-        valid_se = points_in_commune[points_in_commune["num_se"].notna()]["num_se_str"].unique()
+        # ---- CSV num_se FILTER ACCORDING TO COMMUNE ----
+        valid_se = points_in_commune["num_se_str"].dropna().unique()
         csv_se_list = ["No filter"] + sorted(valid_se)
 
         csv_se_selected = st.sidebar.selectbox("CSV num_se", csv_se_list)
@@ -225,12 +221,13 @@ if csv_file is not None:
             else points_in_commune[points_in_commune["num_se_str"] == csv_se_selected]
         )
 
-        st.sidebar.success(f"✅ {len(csv_points_filtered)} filtered points")
+        st.sidebar.success(f"✅ {len(csv_points_filtered)} points in selected commune")
 
     else:
         st.sidebar.error(
             f"CSV must contain latitude & longitude columns. Found: {df.columns.tolist()}"
         )
+
 
 
 # =========================================================
@@ -291,6 +288,7 @@ st.markdown("""
 **- Abdoul Karim DIAWARA**, Chef de Division Cartographie et SIG  
 **- Dr. Mahamadou CAMARA, PhD – Geomatics Engineering**  
 """)
+
 
 
 
