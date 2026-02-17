@@ -15,9 +15,9 @@ st.title("🌍 RICH– Geospatial Monitoring Dashboard")
 # USERS AND REGIONS
 # =========================================================
 USERS = {
-    "ro_rich": {"password": "rich2026rd", "role": "User", "regions": ["Kayes","Kita"]},
-    "fo_rich": {"password": "rich2026ft", "role": "User", "regions": ["Bafoulabe","Kenieba"]},
-    "bo_rich": {"password": "rich2026bk", "role": "User", "regions": ["Yelimane","Nioro","Diema"]},
+    "ro_rich": {"password": "rich2026rd", "role": "User", "lcercle": ["Kayes","Kita"]},
+    "fo_rich": {"password": "rich2026ft", "role": "User", "lcercle": ["Bafoulabe","Kenieba"]},
+    "bo_rich": {"password": "rich2026bk", "role": "User", "lcercle": ["Yelimane","Nioro","Diema"]},
     "admin": {"password": "admin2026", "role": "Admin", "cercles": []}
 }
 
@@ -276,6 +276,7 @@ st.markdown("""
 **- Abdoul Karim DIAWARA**, Chef de Division Cartographie et SIG  
 **- Dr. Mahamadou CAMARA, PhD – Geomatics Engineering**  
 """)
+
 
 
 
