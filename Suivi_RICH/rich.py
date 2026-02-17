@@ -131,6 +131,11 @@ import io  # Make sure this is at the top of your script
 # =========================================================
 # CSV UPLOAD AND FILTER BY CSV num_se BASED ON SELECTED COMMUNE
 # =========================================================
+import io  # Make sure this is at the top of your script
+
+# =========================================================
+# CSV UPLOAD AND FILTER BY CSV num_se BASED ON SELECTED COMMUNE
+# =========================================================
 st.sidebar.markdown("### 📥 Upload CSV Points")
 csv_file = st.sidebar.file_uploader("Upload CSV", type=["csv"])
 csv_points_filtered = None
@@ -145,16 +150,28 @@ if csv_file is not None:
     if "\t" in first_line:
         sep = "\t"
     elif ";" in first_line:
-        sep = "."
+        sep = ";"
     else:
         sep = ","
 
-    df = pd.read_csv(io.StringIO(content), sep=sep)
+    # ---- READ CSV SAFELY ----
+    try:
+        df = pd.read_csv(
+            io.StringIO(content),
+            sep=sep,
+            engine="python",
+            on_bad_lines="skip",
+            encoding="utf-8",
+            skip_blank_lines=True
+        )
+    except Exception as e:
+        st.sidebar.error(f"❌ Failed to read CSV: {e}")
+        df = None
 
-    # ---- CLEAN COLUMN NAMES ----
-    df.columns = df.columns.str.lower().str.strip()
+    if df is not None and {"latitude", "longitude"}.issubset(df.columns):
 
-    if {"latitude", "longitude"}.issubset(df.columns):
+        # ---- CLEAN COLUMN NAMES ----
+        df.columns = df.columns.str.lower().str.strip()
 
         # Convert to numeric safely
         df["latitude"] = pd.to_numeric(df["latitude"], errors="coerce")
@@ -215,6 +232,7 @@ if csv_file is not None:
             f"CSV must contain latitude & longitude columns. Found: {df.columns.tolist()}"
         )
 
+
 # =========================================================
 # MAP
 # =========================================================
@@ -273,6 +291,7 @@ st.markdown("""
 **- Abdoul Karim DIAWARA**, Chef de Division Cartographie et SIG  
 **- Dr. Mahamadou CAMARA, PhD – Geomatics Engineering**  
 """)
+
 
 
 
