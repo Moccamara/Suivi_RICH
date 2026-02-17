@@ -4,6 +4,7 @@ import folium
 from streamlit_folium import st_folium
 from folium.plugins import MeasureControl, Draw
 import pandas as pd
+import io  # <-- add this
 
 # =========================================================
 # APP CONFIG
@@ -275,6 +276,7 @@ st.markdown("""
 **- Abdoul Karim DIAWARA**, Chef de Division Cartographie et SIG  
 **- Dr. Mahamadou CAMARA, PhD – Geomatics Engineering**  
 """)
+
 
 
 
