@@ -16,9 +16,9 @@ st.title("🌍 RICH–Mali Geospatial Monitoring Dashboard")
 # USERS AND REGIONS
 # =========================================================
 USERS = {
-    "ro_rich": {"password": "rich2026rd", "role": "User", "lcercle": ["Kayes","Kita"]},
-    "fo_rich": {"password": "rich2026ft", "role": "User", "lcercle": ["Bafoulabe","Kenieba"]},
-    "bo_rich": {"password": "rich2026bk", "role": "User", "lcercle": ["Yelimane","Nioro","Diema"]},
+    "ro_rich": {"password": "rich2026rd", "role": "User", "lcercles": ["Kayes","Kita"]},
+    "fo_rich": {"password": "rich2026ft", "role": "User", "lcercles": ["Bafoulabe","Kenieba"]},
+    "bo_rich": {"password": "rich2026bk", "role": "User", "lcercles": ["Yelimane","Nioro","Diema"]},
     "admin": {"password": "admin2026", "role": "Admin", "lcercles": [], "cercles": []}  # <-- added regions
 }
 # =========================================================
@@ -50,7 +50,7 @@ if not st.session_state.auth_ok:
             st.session_state.auth_ok = True
             st.session_state.username = username
             st.session_state.user_role = USERS[username]["role"]
-            st.session_state.accessible_regions = USERS[username]["regions"]
+            st.session_state.accessible_regions = USERS[username]["lcercles"]
             st.rerun()
         else:
             st.sidebar.error("❌ Invalid login or password")
@@ -280,6 +280,7 @@ st.markdown("""
 **- Abdoul Karim DIAWARA**, Chef de Division Cartographie et SIG  
 **- Dr. Mahamadou CAMARA, PhD – Geomatics Engineering**  
 """)
+
 
 
 
