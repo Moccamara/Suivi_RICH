@@ -15,12 +15,14 @@ st.title("🌍 RICH–Mali Geospatial Monitoring Dashboard")
 # =========================================================
 # USERS AND REGIONS
 # =========================================================
+# USERS with allowed cercles (lcercle)
 USERS = {
     "ro_rich": {"password": "rich2026rd", "role": "User", "lcercles": ["Kayes","Kita"]},
     "fo_rich": {"password": "rich2026ft", "role": "User", "lcercles": ["Bafoulabe","Kenieba"]},
     "bo_rich": {"password": "rich2026bk", "role": "User", "lcercles": ["Yelimane","Nioro","Diema"]},
-    "admin": {"password": "admin2026", "role": "Admin", "lcercles": [], "cercles": []}  # <-- added regions
+    "admin": {"password": "admin2026", "role": "Admin", "lcercles": []}  # Admin sees all
 }
+
 # =========================================================
 # SESSION INIT
 # =========================================================
@@ -28,7 +30,7 @@ if "auth_ok" not in st.session_state:
     st.session_state.auth_ok = False
     st.session_state.username = None
     st.session_state.user_role = None
-    st.session_state.accessible_regions = []
+    st.session_state.accessible_lcercles = []  # <-- renamed for clarity
     st.session_state.points_gdf = None
 
 # =========================================================
@@ -50,12 +52,11 @@ if not st.session_state.auth_ok:
             st.session_state.auth_ok = True
             st.session_state.username = username
             st.session_state.user_role = USERS[username]["role"]
-            st.session_state.accessible_regions = USERS[username]["lcercles"]
+            st.session_state.accessible_lcercles = USERS[username]["lcercles"]
             st.rerun()
         else:
             st.sidebar.error("❌ Invalid login or password")
     st.stop()
-
 # =========================================================
 # LOAD EMOP SE POLYGONS
 # =========================================================
@@ -280,6 +281,7 @@ st.markdown("""
 **- Abdoul Karim DIAWARA**, Chef de Division Cartographie et SIG  
 **- Dr. Mahamadou CAMARA, PhD – Geomatics Engineering**  
 """)
+
 
 
 
