@@ -9,8 +9,8 @@ import io  # <-- add this
 # =========================================================
 # APP CONFIG
 # =========================================================
-st.set_page_config(layout="wide", page_title="REACH – Suivi")
-st.title("🌍 RICH– Geospatial Monitoring Dashboard")
+st.set_page_config(layout="wide", page_title="REACH–Mali Suivi")
+st.title("🌍 RICH–Mali Geospatial Monitoring Dashboard")
 
 # =========================================================
 # USERS AND REGIONS
@@ -179,7 +179,6 @@ if csv_file is not None:
             geometry=gpd.points_from_xy(df["longitude"], df["latitude"]),
             crs="EPSG:4326"
         )
-
         st.session_state.points_gdf = gpts
 
         # ---- SPATIAL FILTER INSIDE SELECTED COMMUNE ----
@@ -196,10 +195,8 @@ if csv_file is not None:
             how="inner",
             predicate="within"
         )
-
         # ---- HANDLE POSSIBLE COLUMN RENAMING ----
         num_se_col = "num_se" if "num_se" in points_in_commune.columns else "num_se_right"
-
         # Convert to numeric safely
         points_in_commune["num_se"] = pd.to_numeric(
             points_in_commune[num_se_col],
@@ -215,23 +212,16 @@ if csv_file is not None:
         csv_se_list = ["No filter"] + [str(x) for x in valid_se_sorted]
 
         csv_se_selected = st.sidebar.selectbox("CSV num_se", csv_se_list)
-
         csv_points_filtered = (
             points_in_commune
             if csv_se_selected == "No filter"
             else points_in_commune[points_in_commune["num_se_str"] == csv_se_selected]
         )
-
         st.sidebar.success(f"✅ {len(csv_points_filtered)} points in selected commune")
-
     else:
         st.sidebar.error(
             f"CSV must contain latitude & longitude columns. Found: {df.columns.tolist()}"
         )
-
-
-
-
 # =========================================================
 # MAP
 # =========================================================
@@ -285,11 +275,12 @@ if not gdf_se.empty:
 # =========================================================
 st.markdown("""
 ---
-**RICH – Suivi Géospatial**  
+**REACH–MALI Geostial Monitoring**  
 
 **- Abdoul Karim DIAWARA**, Chef de Division Cartographie et SIG  
 **- Dr. Mahamadou CAMARA, PhD – Geomatics Engineering**  
 """)
+
 
 
 
