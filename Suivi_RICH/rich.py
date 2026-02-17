@@ -160,10 +160,10 @@ if csv_file is not None:
 
         st.session_state.points_gdf = gpts
 
-        # Reproject commune to match CRS
+        # Reproject commune
         gdf_commune_proj = gdf_commune.to_crs(gpts.crs)
 
-        # IMPORTANT: include num_se in spatial join
+        # Spatial join (IMPORTANT: include num_se)
         points_in_commune = gpd.sjoin(
             gpts,
             gdf_commune_proj[["geometry", "num_se"]],
@@ -171,38 +171,43 @@ if csv_file is not None:
             predicate="within"
         )
 
-        # Force num_se to nullable integer (NO decimals)
-        if "num_se" in points_in_commune.columns:
-            points_in_commune["num_se"] = (
-                pd.to_numeric(points_in_commune["num_se"], errors="coerce")
-                .astype("Int64")
-            )
-        else:
-            points_in_commune["num_se"] = pd.Series(dtype="Int64")
-
-        # Build clean select list (no .0)
-        csv_se_list = ["No filter"] + sorted(
-            points_in_commune["num_se"]
-            .dropna()
-            .astype(int)
-            .astype(str)
-            .unique()
+        # Force num_se to clean nullable integer
+        points_in_commune["num_se"] = (
+            pd.to_numeric(points_in_commune["num_se"], errors="coerce")
+            .astype("Int64")
         )
+
+        # Create STRING version for safe filtering
+        points_in_commune["num_se_str"] = (
+            points_in_commune["num_se"]
+            .astype("Int64")
+            .astype(str)
+        )
+
+        # Remove "<NA>" values
+        valid_se = points_in_commune[
+            points_in_commune["num_se"].notna()
+        ]["num_se_str"].unique()
+
+        csv_se_list = ["No filter"] + sorted(valid_se)
 
         csv_se_selected = st.sidebar.selectbox("CSV num_se", csv_se_list)
 
-        # Apply filter
+        # Apply filter (STRING comparison — always safe)
         if csv_se_selected == "No filter":
             csv_points_filtered = points_in_commune
         else:
             csv_points_filtered = points_in_commune[
-                points_in_commune["num_se"] == int(csv_se_selected)
+                points_in_commune["num_se_str"] == csv_se_selected
             ]
 
-        st.sidebar.success(f"✅ {len(csv_points_filtered)} points in selected commune")
+        st.sidebar.success(
+            f"✅ {len(csv_points_filtered)} points in selected commune"
+        )
 
     else:
         st.sidebar.error("CSV must contain latitude & longitude columns")
+
 
 
 # =========================================================
@@ -263,6 +268,7 @@ st.markdown("""
 **- Abdoul Karim DIAWARA**, Chef de Division Cartographie et SIG  
 **- Dr. Mahamadou CAMARA, PhD – Geomatics Engineering**  
 """)
+
 
 
 
