@@ -209,9 +209,10 @@ if csv_file is not None:
         # Safe string column for filtering
         points_in_commune["num_se_str"] = points_in_commune["num_se"].astype(str)
 
-        # ---- CSV num_se FILTER ACCORDING TO COMMUNE ----
-        valid_se = points_in_commune["num_se_str"].dropna().unique()
-        csv_se_list = ["No filter"] + sorted(valid_se)
+        # ---- CSV num_se FILTER ACCORDING TO COMMUNE AND SORT NUMERICALLY ----
+        valid_se = points_in_commune["num_se"].dropna().unique()
+        valid_se_sorted = sorted(valid_se)  # numeric sort
+        csv_se_list = ["No filter"] + [str(x) for x in valid_se_sorted]
 
         csv_se_selected = st.sidebar.selectbox("CSV num_se", csv_se_list)
 
@@ -227,6 +228,7 @@ if csv_file is not None:
         st.sidebar.error(
             f"CSV must contain latitude & longitude columns. Found: {df.columns.tolist()}"
         )
+
 
 
 
@@ -288,6 +290,7 @@ st.markdown("""
 **- Abdoul Karim DIAWARA**, Chef de Division Cartographie et SIG  
 **- Dr. Mahamadou CAMARA, PhD – Geomatics Engineering**  
 """)
+
 
 
 
