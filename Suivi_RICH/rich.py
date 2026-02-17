@@ -126,6 +126,8 @@ gdf_se = gdf_commune if se_selected=="No filter" else gdf_commune[gdf_commune["n
 # =========================================================
 # CSV UPLOAD AND FILTER BY CSV num_se BASED ON SELECTED COMMUNE
 # =========================================================
+import io  # Make sure this is at the top of your script
+
 # =========================================================
 # CSV UPLOAD AND FILTER BY CSV num_se BASED ON SELECTED COMMUNE
 # =========================================================
@@ -139,11 +141,11 @@ if csv_file is not None:
     content = csv_file.read().decode("utf-8", errors="ignore")
     first_line = content.splitlines()[0]
 
-    # ---- MANUAL SEPARATOR DETECTION (MORE RELIABLE THAN sep=None) ----
+    # ---- MANUAL SEPARATOR DETECTION ----
     if "\t" in first_line:
         sep = "\t"
     elif ";" in first_line:
-        sep = ";"
+        sep = "."
     else:
         sep = ","
 
@@ -171,6 +173,10 @@ if csv_file is not None:
         # ---- SPATIAL FILTER INSIDE SELECTED COMMUNE ----
         gdf_commune_proj = gdf_commune.to_crs(gpts.crs)
 
+        # Keep only geometry + num_se and ensure column exists
+        if "num_se" not in gdf_commune_proj.columns:
+            gdf_commune_proj["num_se"] = None
+
         points_in_commune = gpd.sjoin(
             gpts,
             gdf_commune_proj[["geometry", "num_se"]],
@@ -178,46 +184,37 @@ if csv_file is not None:
             predicate="within"
         )
 
-        # ---- CLEAN num_se ----
-        points_in_commune["num_se"] = (
-            pd.to_numeric(points_in_commune["num_se"], errors="coerce")
-            .astype("Int64")
-        )
+        # ---- HANDLE POSSIBLE COLUMN RENAMING ----
+        num_se_col = "num_se" if "num_se" in points_in_commune.columns else "num_se_right"
+
+        # Convert to numeric safely
+        points_in_commune["num_se"] = pd.to_numeric(
+            points_in_commune[num_se_col],
+            errors="coerce"
+        ).astype("Int64")
 
         # Safe string column for filtering
-        points_in_commune["num_se_str"] = (
-            points_in_commune["num_se"]
-            .astype("Int64")
-            .astype(str)
-        )
+        points_in_commune["num_se_str"] = points_in_commune["num_se"].astype(str)
 
-        valid_se = (
-            points_in_commune[
-                points_in_commune["num_se"].notna()
-            ]["num_se_str"]
-            .unique()
-        )
+        # Get valid SE values for filtering
+        valid_se = points_in_commune[points_in_commune["num_se"].notna()]["num_se_str"].unique()
         csv_se_list = ["No filter"] + sorted(valid_se)
 
-        csv_se_selected = st.sidebar.selectbox(
-            "CSV num_se",
-            csv_se_list
-        )
+        csv_se_selected = st.sidebar.selectbox("CSV num_se", csv_se_list)
+
         csv_points_filtered = (
             points_in_commune
             if csv_se_selected == "No filter"
-            else points_in_commune[
-                points_in_commune["num_se_str"] == csv_se_selected
-            ]
+            else points_in_commune[points_in_commune["num_se_str"] == csv_se_selected]
         )
-        st.sidebar.success(
-            f"✅ {len(csv_points_filtered)} filtered points"
-        )
+
+        st.sidebar.success(f"✅ {len(csv_points_filtered)} filtered points")
+
     else:
         st.sidebar.error(
-            f"CSV must contain latitude & longitude columns. "
-            f"Found: {df.columns.tolist()}"
+            f"CSV must contain latitude & longitude columns. Found: {df.columns.tolist()}"
         )
+
 # =========================================================
 # MAP
 # =========================================================
@@ -276,6 +273,7 @@ st.markdown("""
 **- Abdoul Karim DIAWARA**, Chef de Division Cartographie et SIG  
 **- Dr. Mahamadou CAMARA, PhD – Geomatics Engineering**  
 """)
+
 
 
 
