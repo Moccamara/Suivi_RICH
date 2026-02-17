@@ -126,50 +126,86 @@ gdf_se = gdf_commune if se_selected=="No filter" else gdf_commune[gdf_commune["n
 # =========================================================
 # CSV UPLOAD AND FILTER BY CSV num_se BASED ON SELECTED COMMUNE
 # =========================================================
+# =========================================================
+# CSV UPLOAD AND FILTER BY CSV num_se BASED ON SELECTED COMMUNE
+# =========================================================
 st.sidebar.markdown("### 📥 Upload CSV Points")
 csv_file = st.sidebar.file_uploader("Upload CSV", type=["csv"])
 csv_points_filtered = None
-if csv_file is not None:
-    # Robust CSV reading (auto separator + encoding fallback)
-    try:
-        df = pd.read_csv(csv_file, encoding="utf-8", sep=None, engine="python")
-    except UnicodeDecodeError:
-        df = pd.read_csv(csv_file, encoding="latin1", sep=None, engine="python")
-    df.columns = df.columns.str.lower().str.strip()
-    if {"latitude","longitude"}.issubset(df.columns):
 
+if csv_file is not None:
+
+    # ---- READ FILE CONTENT FIRST ----
+    content = csv_file.read().decode("utf-8", errors="ignore")
+    first_line = content.splitlines()[0]
+
+    # ---- MANUAL SEPARATOR DETECTION (MORE RELIABLE THAN sep=None) ----
+    if "\t" in first_line:
+        sep = "\t"
+    elif ";" in first_line:
+        sep = ";"
+    else:
+        sep = ","
+
+    df = pd.read_csv(io.StringIO(content), sep=sep)
+
+    # ---- CLEAN COLUMN NAMES ----
+    df.columns = df.columns.str.lower().str.strip()
+
+    if {"latitude", "longitude"}.issubset(df.columns):
+
+        # Convert to numeric safely
         df["latitude"] = pd.to_numeric(df["latitude"], errors="coerce")
         df["longitude"] = pd.to_numeric(df["longitude"], errors="coerce")
-        df = df.dropna(subset=["latitude","longitude"])
+        df = df.dropna(subset=["latitude", "longitude"])
 
+        # Create GeoDataFrame
         gpts = gpd.GeoDataFrame(
             df,
             geometry=gpd.points_from_xy(df["longitude"], df["latitude"]),
             crs="EPSG:4326"
         )
+
         st.session_state.points_gdf = gpts
-        # Spatial filter inside commune
+
+        # ---- SPATIAL FILTER INSIDE SELECTED COMMUNE ----
         gdf_commune_proj = gdf_commune.to_crs(gpts.crs)
+
         points_in_commune = gpd.sjoin(
             gpts,
             gdf_commune_proj[["geometry", "num_se"]],
             how="inner",
             predicate="within"
         )
-        # Clean num_se
+
+        # ---- CLEAN num_se ----
         points_in_commune["num_se"] = (
             pd.to_numeric(points_in_commune["num_se"], errors="coerce")
             .astype("Int64")
         )
+
         # Safe string column for filtering
-        points_in_commune["num_se_str"] = points_in_commune["num_se"].astype(str)
-        valid_se = points_in_commune[
-            points_in_commune["num_se"].notna()
-        ]["num_se_str"].unique()
+        points_in_commune["num_se_str"] = (
+            points_in_commune["num_se"]
+            .astype("Int64")
+            .astype(str)
+        )
+
+        valid_se = (
+            points_in_commune[
+                points_in_commune["num_se"].notna()
+            ]["num_se_str"]
+            .unique()
+        )
         csv_se_list = ["No filter"] + sorted(valid_se)
-        csv_se_selected = st.sidebar.selectbox("CSV num_se", csv_se_list)
+
+        csv_se_selected = st.sidebar.selectbox(
+            "CSV num_se",
+            csv_se_list
+        )
         csv_points_filtered = (
-            points_in_commune if csv_se_selected == "No filter"
+            points_in_commune
+            if csv_se_selected == "No filter"
             else points_in_commune[
                 points_in_commune["num_se_str"] == csv_se_selected
             ]
@@ -178,8 +214,10 @@ if csv_file is not None:
             f"✅ {len(csv_points_filtered)} filtered points"
         )
     else:
-        st.sidebar.error("CSV must contain latitude & longitude columns")
-
+        st.sidebar.error(
+            f"CSV must contain latitude & longitude columns. "
+            f"Found: {df.columns.tolist()}"
+        )
 # =========================================================
 # MAP
 # =========================================================
@@ -238,6 +276,7 @@ st.markdown("""
 **- Abdoul Karim DIAWARA**, Chef de Division Cartographie et SIG  
 **- Dr. Mahamadou CAMARA, PhD – Geomatics Engineering**  
 """)
+
 
 
 
