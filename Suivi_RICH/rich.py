@@ -180,6 +180,33 @@ if csv_file is not None:
         st.sidebar.error(f"CSV must contain latitude & longitude columns. Found: {df.columns.tolist()}")
 
 # =========================================================
+# FOLIUM MAP
+# =========================================================
+if not gdf_se.empty:
+    minx, miny, maxx, maxy = gdf_se.total_bounds
+    m = folium.Map(location=[(miny+maxy)/2,(minx+maxx)/2], zoom_start=13, tiles=None)
+    # Base layers
+    folium.TileLayer("OpenStreetMap", name="OpenStreetMap").add_to(m)
+    folium.TileLayer(tiles="https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}", attr="Google", name="Google Satellite").add_to(m)
+    
+    # SE polygons
+    folium.GeoJson(gdf_se, tooltip=folium.GeoJsonTooltip(fields=["num_se","pop_se"], aliases=["SE","Population"]),
+                   style_function=lambda x: {"color":"blue","weight":2,"fillOpacity":0.2}).add_to(m)
+    
+    # CSV points
+    if csv_points_filtered is not None and not csv_points_filtered.empty:
+        for _, r in csv_points_filtered.iterrows():
+            folium.CircleMarker([r.geometry.y, r.geometry.x], radius=5, color="red", fill=True, fill_opacity=0.9,
+                                tooltip=f"Point Concession: SE {r.get('num_se','N/A')}").add_to(m)
+    
+    # Tools
+    MeasureControl().add_to(m)
+    Draw(export=True).add_to(m)
+    folium.LayerControl(collapsed=True).add_to(m)
+    m.fit_bounds([[miny,minx],[maxy,maxx]])
+    st_folium(m, height=550, use_container_width=True)
+
+# =========================================================
 # NAVIGATION & KML DOWNLOAD FROM GITHUB
 # =========================================================
 if se_selected != "No filter" and not gdf_se.empty:
@@ -224,3 +251,4 @@ st.markdown("""
 **- Abdoul Karim DIAWARA**, Chef de Division Cartographie et SIG  
 **- Dr. Mahamadou CAMARA, PhD – Geomatics Engineering**  
 """)
+
