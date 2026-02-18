@@ -13,25 +13,26 @@ st.set_page_config(layout="wide", page_title="REACH–Mali Suivi")
 st.title("🌍 RICH–Mali Geospatial Monitoring Dashboard")
 
 # =========================================================
-# USERS AND REGIONS
+# USERS AND Cercle
 # =========================================================
-# USERS with allowed cercles (lcercle)
+# =========================================================
+# USERS
+# =========================================================
 USERS = {
-    "ro_rich": {"password": "rich2026rd", "role": "User", "lcercles": ["Kayes","Kita"]},
-    "fo_rich": {"password": "rich2026ft", "role": "User", "lcercles": ["Bafoulabe","Kenieba"]},
-    "bo_rich": {"password": "rich2026bk", "role": "User", "lcercles": ["Yelimane","Nioro","Diema"]},
+    "ro_rich": {"password": "rich2026rd", "role": "User", "lcercles": ["Kayes", "Kita"]},
+    "fo_rich": {"password": "rich2026ft", "role": "User", "lcercles": ["Bafoulabe", "Kenieba"]},
+    "bo_rich": {"password": "rich2026bk", "role": "User", "lcercles": ["Yelimane", "Nioro", "Diema"]},
     "admin": {"password": "admin2026", "role": "Admin", "lcercles": []}  # Admin sees all
 }
 
 # =========================================================
-# SESSION INIT
+# SESSION INIT (safe initialization)
 # =========================================================
-if "auth_ok" not in st.session_state:
-    st.session_state.auth_ok = False
-    st.session_state.username = None
-    st.session_state.user_role = None
-    st.session_state.accessible_lcercles = []  # <-- renamed for clarity
-    st.session_state.points_gdf = None
+st.session_state.setdefault("auth_ok", False)
+st.session_state.setdefault("username", None)
+st.session_state.setdefault("user_role", None)
+st.session_state.setdefault("accessible_lcercles", [])
+st.session_state.setdefault("points_gdf", None)
 
 # =========================================================
 # LOGOUT FUNCTION
@@ -45,18 +46,24 @@ def logout():
 # =========================================================
 if not st.session_state.auth_ok:
     st.sidebar.header("🔐 Login")
+
     username = st.sidebar.text_input("Login")
     password = st.sidebar.text_input("Password", type="password")
+
     if st.sidebar.button("Login"):
-        if username in USERS and password == USERS[username]["password"]:
+        user = USERS.get(username)
+
+        if user and password == user["password"]:
             st.session_state.auth_ok = True
             st.session_state.username = username
-            st.session_state.user_role = USERS[username]["role"]
-            st.session_state.accessible_lcercles = USERS[username]["lcercles"]
+            st.session_state.user_role = user["role"]
+            st.session_state.accessible_lcercles = user["lcercles"]
             st.rerun()
         else:
             st.sidebar.error("❌ Invalid login or password")
+
     st.stop()
+
 # =========================================================
 # LOAD EMOP SE POLYGONS
 # =========================================================
@@ -281,6 +288,7 @@ st.markdown("""
 **- Abdoul Karim DIAWARA**, Chef de Division Cartographie et SIG  
 **- Dr. Mahamadou CAMARA, PhD – Geomatics Engineering**  
 """)
+
 
 
 
