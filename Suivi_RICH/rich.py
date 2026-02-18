@@ -261,14 +261,19 @@ if not gdf_se.empty:
         control=True
     ).add_to(m)
 
-    # SE polygons
-    se_group = folium.FeatureGroup(name="SE Polygons")
-    folium.GeoJson(
-        gdf_se,
-        tooltip=folium.GeoJsonTooltip(fields=["num_se","pop_se"], aliases=["SE","Population"]),
-        style_function=lambda x: {"color":"blue","weight":2,"fillOpacity":0.2}
-    ).add_to(se_group)
-    se_group.add_to(m)
+    # SE polygons (improved visibility)
+se_group = folium.FeatureGroup(name="SE Polygons", show=True)  # visible by default
+folium.GeoJson(
+    gdf_se,
+    tooltip=folium.GeoJsonTooltip(fields=["num_se","pop_se"], aliases=["SE","Population"]),
+    style_function=lambda feature: {
+        "color": "blue",        # border color
+        "weight": 3,            # thicker border
+        "fillColor": "cyan",    # fill color
+        "fillOpacity": 0.4      # semi-transparent
+    }
+).add_to(se_group)
+se_group.add_to(m)
 
     # CSV points overlay
     if csv_points_filtered is not None and not csv_points_filtered.empty:
@@ -342,6 +347,7 @@ st.markdown("""
 **- Abdoul Karim DIAWARA**, Chef de Division Cartographie et SIG  
 **- Dr. Mahamadou CAMARA, PhD – Geomatics Engineering**  
 """)
+
 
 
 
