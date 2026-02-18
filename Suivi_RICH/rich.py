@@ -61,7 +61,6 @@ if not st.session_state.auth_ok:
 
     st.stop()
 
-
 # =========================================================
 # LOAD EMOP SE POLYGONS
 # =========================================================
@@ -72,15 +71,12 @@ def load_se_data():
         gdf = gdf.set_crs(epsg=4326)
     else:
         gdf = gdf.to_crs(epsg=4326)
-
     gdf.columns = [c.strip() for c in gdf.columns]  # keep exact names
     for col in ["lregion","lcercle","lcommune","num_se","pop_se"]:
         if col not in gdf.columns:
             gdf[col] = None
-
     gdf = gdf[gdf.is_valid & ~gdf.is_empty]
     return gdf
-
 try:
     gdf = load_se_data()
 except Exception as e:
@@ -311,6 +307,7 @@ st.markdown("""
 **- Abdoul Karim DIAWARA**, Chef de Division Cartographie et SIG  
 **- Dr. Mahamadou CAMARA, PhD – Geomatics Engineering**  
 """)
+
 
 
 
