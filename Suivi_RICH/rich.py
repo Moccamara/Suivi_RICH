@@ -300,27 +300,40 @@ if not gdf_se.empty:
 # =========================================================
 # NAVIGATE TO SELECTED SE (BEST PLACE HERE)
 # =========================================================
-if not gdf_se.empty and se_selected != "No filter":
+# =========================================================
+# NAVIGATION & KML DOWNLOAD FROM GITHUB
+# =========================================================
+if se_selected != "No filter" and not gdf_se.empty:
+    st.markdown("### 🧭 Navigate & Download Selected SE")
 
-    se_geom = gdf_se.geometry.unary_union
+    # 1️⃣ Google Maps Button (centroid)
+    centroid = gdf_se.geometry.unary_union.centroid
+    lat, lon = centroid.y, centroid.x
+    google_maps_url = f"https://www.google.com/maps/@{lat},{lon},18z"
+    
+    st.markdown(
+        f'<a href="{google_maps_url}" target="_blank">'
+        f'<button style="background-color:#4CAF50;color:white;padding:10px 20px;border:none;border-radius:5px;font-size:16px;">'
+        f'🚗 Open SE in Google Maps (centroid)</button></a>',
+        unsafe_allow_html=True
+    )
 
-    if se_geom and not se_geom.is_empty:
-        centroid = se_geom.centroid
-        lat = centroid.y
-        lon = centroid.x
-
-        google_maps_url = (
-            f"https://www.google.com/maps/dir/?api=1"
-            f"&destination={lat},{lon}"
-            f"&travelmode=driving"
-        )
-
-        st.markdown("### 🚗 Field Navigation")
-
-        st.link_button(
-            "🧭 Start Navigation in Google Maps",
-            google_maps_url
-        )
+    # 2️⃣ Download KML from GitHub
+    github_raw_url = f"https://raw.githubusercontent.com/username/repo_name/main/kml/SE_{se_selected}.kml"
+    try:
+        response = requests.get(github_raw_url)
+        if response.status_code == 200:
+            kml_bytes = response.content
+            st.download_button(
+                label="📥 Download SE Polygon (KML) for Google My Maps",
+                data=kml_bytes,
+                file_name=f"SE_{se_selected}.kml",
+                mime="application/vnd.google-earth.kml+xml"
+            )
+        else:
+            st.warning(f"KML file for SE {se_selected} not found on GitHub.")
+    except Exception as e:
+        st.error(f"❌ Error fetching KML from GitHub: {e}")
 
 # =========================================================
 # FOOTER
@@ -332,6 +345,7 @@ st.markdown("""
 **- Abdoul Karim DIAWARA**, Chef de Division Cartographie et SIG  
 **- Dr. Mahamadou CAMARA, PhD – Geomatics Engineering**  
 """)
+
 
 
 
