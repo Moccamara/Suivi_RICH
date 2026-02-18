@@ -269,6 +269,48 @@ if se_selected != "No filter" and not gdf_se.empty:
         st.error(f"❌ Error generating KML: {e}")
 
 
+import tempfile
+from fastkml import kml
+from shapely.geometry import Point
+
+if se_selected != "No filter" and not gdf_se.empty:
+    try:
+        # Create temporary KML file
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".kml") as tmp:
+            # Save SE polygon first
+            gdf_se.to_crs(epsg=4326).to_file(tmp.name, driver="KML")
+
+            # Add centroid as red Placemark
+            centroid = gdf_se.geometry.unary_union.centroid
+            k = kml.KML()
+            doc = kml.Document()
+            placemark = kml.Placemark()
+            placemark.name = "SE Centroid"
+            placemark.geometry = Point(centroid.x, centroid.y)
+            doc.append(placemark)
+            k.append(doc)
+
+            # Write KML with centroid included
+            with open(tmp.name, "wb") as f:
+                f.write(k.to_string(prettyprint=True).encode("utf-8"))
+
+            # Read for Streamlit download
+            with open(tmp.name,"rb") as f:
+                kml_bytes = f.read()
+
+        st.download_button(
+            label="📥 Download SE Polygon + Centroid (KML)",
+            data=kml_bytes,
+            file_name=f"SE_{se_selected}_with_centroid.kml",
+            mime="application/vnd.google-earth.kml+xml"
+        )
+
+        st.info("✅ KML includes SE polygon and red centroid for Google My Maps")
+    except Exception as e:
+        st.error(f"❌ Error generating KML: {e}")
+
+
+
 # =========================================================
 # FOOTER
 # =========================================================
@@ -279,5 +321,6 @@ st.markdown("""
 **- Abdoul Karim DIAWARA**, Chef de Division Cartographie et SIG  
 **- Dr. Mahamadou CAMARA, PhD – Geomatics Engineering**  
 """)
+
 
 
