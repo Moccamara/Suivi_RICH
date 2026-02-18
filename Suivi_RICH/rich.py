@@ -108,26 +108,51 @@ def unique_clean(series):
 # =========================================================
 st.sidebar.markdown("### 🗂️ Attribute Query")
 
-# Region
+# ---------------------------
+# REGION
+# ---------------------------
 all_regions = unique_clean(gdf["lregion"])
-regions = all_regions if st.session_state.user_role=="Admin" else [r for r in all_regions if r in st.session_state.accessible_regions]
+
+if st.session_state.user_role == "Admin":
+    regions = all_regions
+else:
+    # Keep only regions that contain user's cercles
+    user_cercles = st.session_state.accessible_lcercles
+    allowed_regions = gdf[gdf["lcercle"].isin(user_cercles)]["lregion"].unique()
+    regions = [r for r in all_regions if r in allowed_regions]
+
 region = st.sidebar.selectbox("Region", regions)
 gdf_r = gdf[gdf["lregion"] == region]
 
-# Cercle
+# ---------------------------
+# CERCLE
+# ---------------------------
 cercles = unique_clean(gdf_r["lcercle"])
+
+if st.session_state.user_role != "Admin":
+    cercles = [c for c in cercles if c in st.session_state.accessible_lcercles]
+
 cercle = st.sidebar.selectbox("Cercle", cercles)
 gdf_c = gdf_r[gdf_r["lcercle"] == cercle]
 
-# Commune
+# ---------------------------
+# COMMUNE
+# ---------------------------
 communes = unique_clean(gdf_c["lcommune"])
 commune = st.sidebar.selectbox("Commune", communes)
 gdf_commune = gdf_c[gdf_c["lcommune"] == commune]
 
+# ---------------------------
 # SE
+# ---------------------------
 se_list = ["No filter"] + unique_clean(gdf_commune["num_se"])
 se_selected = st.sidebar.selectbox("SE (num_se)", se_list)
-gdf_se = gdf_commune if se_selected=="No filter" else gdf_commune[gdf_commune["num_se"]==se_selected]
+
+gdf_se = (
+    gdf_commune
+    if se_selected == "No filter"
+    else gdf_commune[gdf_commune["num_se"] == se_selected]
+)
 
 # =========================================================
 # CSV UPLOAD AND FILTER BY CSV num_se BASED ON SELECTED COMMUNE
@@ -286,6 +311,7 @@ st.markdown("""
 **- Abdoul Karim DIAWARA**, Chef de Division Cartographie et SIG  
 **- Dr. Mahamadou CAMARA, PhD – Geomatics Engineering**  
 """)
+
 
 
 
