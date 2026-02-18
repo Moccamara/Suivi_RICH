@@ -2,10 +2,8 @@ import streamlit as st
 import geopandas as gpd
 import pandas as pd
 import io
-import folium
-from streamlit_folium import st_folium
-from folium.plugins import MeasureControl, Draw
 import os
+import requests
 
 # =========================================================
 # APP CONFIG
@@ -30,7 +28,6 @@ st.session_state.setdefault("auth_ok", False)
 st.session_state.setdefault("username", None)
 st.session_state.setdefault("user_role", None)
 st.session_state.setdefault("accessible_lcercles", [])
-st.session_state.setdefault("points_gdf", None)
 
 # =========================================================
 # LOGOUT FUNCTION
@@ -133,7 +130,7 @@ se_selected = st.sidebar.selectbox("SE (num_se)", se_list)
 gdf_se = gdf_commune if se_selected=="No filter" else gdf_commune[gdf_commune["num_se"]==se_selected]
 
 # =========================================================
-# CSV UPLOAD AND FILTER
+# CSV UPLOAD AND FILTER (optional)
 # =========================================================
 st.sidebar.markdown("### 📥 Upload CSV Points")
 csv_file = st.sidebar.file_uploader("Upload CSV", type=["csv"])
@@ -152,49 +149,26 @@ if csv_file is not None:
         df.columns = df.columns.str.lower().str.strip()
         df["latitude"] = pd.to_numeric(df["latitude"], errors="coerce")
         df["longitude"] = pd.to_numeric(df["longitude"], errors="coerce")
-        df = df.dropna(subset=["latitude", "longitude"])
+        df = df.dropna(subset=["latitude","longitude"])
         gpts = gpd.GeoDataFrame(df, geometry=gpd.points_from_xy(df["longitude"], df["latitude"]), crs="EPSG:4326")
-        st.session_state.points_gdf = gpts
 
         # Filter points within selected commune
         gdf_commune_proj = gdf_commune.to_crs(gpts.crs)
         points_in_commune = gpd.sjoin(gpts, gdf_commune_proj[["geometry","num_se"]], how="inner", predicate="within")
-        points_in_commune["num_se_str"] = points_in_commune["num_se"].astype(str)
-        csv_se_list = ["No filter"] + sorted(points_in_commune["num_se"].dropna().unique().astype(str))
+
+        # ✅ Fix KeyError: choose correct num_se column
+        num_se_col = [c for c in points_in_commune.columns if c.lower() == "num_se"]
+        if num_se_col:
+            points_in_commune["num_se_str"] = points_in_commune[num_se_col[0]].astype(str)
+        else:
+            points_in_commune["num_se_str"] = "Unknown"
+
+        csv_se_list = ["No filter"] + sorted(points_in_commune["num_se_str"].dropna().unique())
         csv_se_selected = st.sidebar.selectbox("CSV num_se", csv_se_list)
         csv_points_filtered = points_in_commune if csv_se_selected=="No filter" else points_in_commune[points_in_commune["num_se_str"]==csv_se_selected]
         st.sidebar.success(f"✅ {len(csv_points_filtered)} points in selected commune")
     else:
         st.sidebar.error(f"CSV must contain latitude & longitude columns. Found: {df.columns.tolist()}")
-
-# =========================================================
-# FOLIUM MAP
-# =========================================================
-if not gdf_se.empty:
-    minx, miny, maxx, maxy = gdf_se.total_bounds
-    m = folium.Map(location=[(miny+maxy)/2,(minx+maxx)/2], zoom_start=13, tiles=None)
-    # Base layers
-    folium.TileLayer("OpenStreetMap", name="OpenStreetMap").add_to(m)
-    folium.TileLayer(tiles="https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}", attr="Google", name="Google Satellite").add_to(m)
-    
-    # SE polygons
-    folium.GeoJson(gdf_se, tooltip=folium.GeoJsonTooltip(fields=["num_se","pop_se"], aliases=["SE","Population"]),
-                   style_function=lambda x: {"color":"blue","weight":2,"fillOpacity":0.2}).add_to(m)
-    
-    # CSV points
-    if csv_points_filtered is not None and not csv_points_filtered.empty:
-        for _, r in csv_points_filtered.iterrows():
-            folium.CircleMarker([r.geometry.y, r.geometry.x], radius=5, color="red", fill=True, fill_opacity=0.9,
-                                tooltip=f"Point Concession: SE {r.get('num_se','N/A')}").add_to(m)
-    
-    # Tools
-    MeasureControl().add_to(m)
-    Draw(export=True).add_to(m)
-    folium.LayerControl(collapsed=True).add_to(m)
-    m.fit_bounds([[miny,minx],[maxy,maxx]])
-    st_folium(m, height=550, use_container_width=True)
-
-import requests
 
 # =========================================================
 # NAVIGATION & KML DOWNLOAD FROM GITHUB
@@ -206,7 +180,7 @@ if se_selected != "No filter" and not gdf_se.empty:
     centroid = gdf_se.geometry.unary_union.centroid
     lat, lon = centroid.y, centroid.x
     google_maps_url = f"https://www.google.com/maps/@{lat},{lon},18z"
-    
+
     st.markdown(
         f'<a href="{google_maps_url}" target="_blank">'
         f'<button style="background-color:#4CAF50;color:white;padding:10px 20px;border:none;border-radius:5px;font-size:16px;">'
@@ -216,7 +190,6 @@ if se_selected != "No filter" and not gdf_se.empty:
 
     # 2️⃣ Download KML from GitHub
     github_raw_url = f"https://raw.githubusercontent.com/username/repo_name/main/kml/SE_{se_selected}.kml"
-
     try:
         response = requests.get(github_raw_url)
         if response.status_code == 200:
@@ -231,6 +204,7 @@ if se_selected != "No filter" and not gdf_se.empty:
             st.warning(f"KML file for SE {se_selected} not found on GitHub.")
     except Exception as e:
         st.error(f"❌ Error fetching KML from GitHub: {e}")
+
 # =========================================================
 # FOOTER
 # =========================================================
@@ -241,6 +215,3 @@ st.markdown("""
 **- Abdoul Karim DIAWARA**, Chef de Division Cartographie et SIG  
 **- Dr. Mahamadou CAMARA, PhD – Geomatics Engineering**  
 """)
-
-
-
