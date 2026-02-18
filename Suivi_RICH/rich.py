@@ -2,10 +2,8 @@ import streamlit as st
 import geopandas as gpd
 import pandas as pd
 import io
-import folium
-from streamlit_folium import st_folium
-from folium.plugins import MeasureControl, Draw
 import os
+import requests
 
 # =========================================================
 # APP CONFIG
@@ -94,7 +92,8 @@ with st.sidebar:
 # UNIQUE CLEAN FUNCTION
 # =========================================================
 def unique_clean(series):
-    if isinstance(series, pd.DataFrame): series = series.iloc[:,0]
+    if isinstance(series, pd.DataFrame): 
+        series = series.iloc[:,0]
     return sorted(series.dropna().astype(str).str.strip().unique())
 
 # =========================================================
@@ -158,43 +157,27 @@ if csv_file is not None:
 
         # Filter points within selected commune
         gdf_commune_proj = gdf_commune.to_crs(gpts.crs)
-        points_in_commune = gpd.sjoin(gpts, gdf_commune_proj[["geometry","num_se"]], how="inner", predicate="within")
-        points_in_commune["num_se_str"] = points_in_commune["num_se"].astype(str)
-        csv_se_list = ["No filter"] + sorted(points_in_commune["num_se"].dropna().unique().astype(str))
+        points_in_commune = gpd.sjoin(
+            gpts, 
+            gdf_commune_proj[["geometry","num_se"]], 
+            how="inner", 
+            predicate="within"
+        )
+
+        # Fix KeyError: check which column contains SE id
+        if "num_se_right" in points_in_commune.columns:
+            points_in_commune["num_se_str"] = points_in_commune["num_se_right"].astype(str)
+        elif "num_se" in points_in_commune.columns:
+            points_in_commune["num_se_str"] = points_in_commune["num_se"].astype(str)
+        else:
+            points_in_commune["num_se_str"] = "Unknown"
+
+        csv_se_list = ["No filter"] + sorted(points_in_commune["num_se_str"].dropna().unique())
         csv_se_selected = st.sidebar.selectbox("CSV num_se", csv_se_list)
         csv_points_filtered = points_in_commune if csv_se_selected=="No filter" else points_in_commune[points_in_commune["num_se_str"]==csv_se_selected]
         st.sidebar.success(f"✅ {len(csv_points_filtered)} points in selected commune")
     else:
         st.sidebar.error(f"CSV must contain latitude & longitude columns. Found: {df.columns.tolist()}")
-
-# =========================================================
-# FOLIUM MAP
-# =========================================================
-if not gdf_se.empty:
-    minx, miny, maxx, maxy = gdf_se.total_bounds
-    m = folium.Map(location=[(miny+maxy)/2,(minx+maxx)/2], zoom_start=13, tiles=None)
-    # Base layers
-    folium.TileLayer("OpenStreetMap", name="OpenStreetMap").add_to(m)
-    folium.TileLayer(tiles="https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}", attr="Google", name="Google Satellite").add_to(m)
-    
-    # SE polygons
-    folium.GeoJson(gdf_se, tooltip=folium.GeoJsonTooltip(fields=["num_se","pop_se"], aliases=["SE","Population"]),
-                   style_function=lambda x: {"color":"blue","weight":2,"fillOpacity":0.2}).add_to(m)
-    
-    # CSV points
-    if csv_points_filtered is not None and not csv_points_filtered.empty:
-        for _, r in csv_points_filtered.iterrows():
-            folium.CircleMarker([r.geometry.y, r.geometry.x], radius=5, color="red", fill=True, fill_opacity=0.9,
-                                tooltip=f"Point Concession: SE {r.get('num_se','N/A')}").add_to(m)
-    
-    # Tools
-    MeasureControl().add_to(m)
-    Draw(export=True).add_to(m)
-    folium.LayerControl(collapsed=True).add_to(m)
-    m.fit_bounds([[miny,minx],[maxy,maxx]])
-    st_folium(m, height=550, use_container_width=True)
-
-import requests
 
 # =========================================================
 # NAVIGATION & KML DOWNLOAD FROM GITHUB
@@ -216,7 +199,6 @@ if se_selected != "No filter" and not gdf_se.empty:
 
     # 2️⃣ Download KML from GitHub
     github_raw_url = f"https://raw.githubusercontent.com/username/repo_name/main/kml/SE_{se_selected}.kml"
-
     try:
         response = requests.get(github_raw_url)
         if response.status_code == 200:
