@@ -32,6 +32,9 @@ st.session_state.setdefault("user_role", None)
 st.session_state.setdefault("accessible_lcercles", [])
 st.session_state.setdefault("points_gdf", None)
 
+# =========================================================
+# LOGOUT FUNCTION
+# =========================================================
 def logout():
     st.session_state.clear()
     st.rerun()
@@ -43,7 +46,6 @@ if not st.session_state.auth_ok:
     st.sidebar.header("🔐 Login")
     username = st.sidebar.text_input("Login")
     password = st.sidebar.text_input("Password", type="password")
-
     if st.sidebar.button("Login"):
         user = USERS.get(username)
         if user and password == user["password"]:
@@ -66,20 +68,17 @@ def load_se_data():
         gdf = gdf.set_crs(epsg=4326)
     else:
         gdf = gdf.to_crs(epsg=4326)
-
     gdf.columns = [c.strip() for c in gdf.columns]
-
     for col in ["lregion","lcercle","lcommune","num_se","pop_se"]:
         if col not in gdf.columns:
             gdf[col] = None
-
     gdf = gdf[gdf.is_valid & ~gdf.is_empty]
     return gdf
 
 try:
     gdf = load_se_data()
 except Exception as e:
-    st.error(f"❌ Unable to load GeoJSON: {e}")
+    st.error(f"❌ Unable to load RICH GeoJSON: {e}")
     st.stop()
 
 # =========================================================
@@ -92,22 +91,24 @@ with st.sidebar:
         logout()
 
 # =========================================================
-# HELPER
+# HELPER FUNCTION
 # =========================================================
 def unique_clean(series):
+    if isinstance(series, pd.DataFrame):
+        series = series.iloc[:,0]
     return sorted(series.dropna().astype(str).str.strip().unique())
 
 # =========================================================
-# FILTERS
+# ATTRIBUTE FILTERS
 # =========================================================
 st.sidebar.markdown("### 🗂️ Attribute Query")
 
 all_regions = unique_clean(gdf["lregion"])
-
 if st.session_state.user_role == "Admin":
     regions = all_regions
 else:
-    allowed_regions = gdf[gdf["lcercle"].isin(st.session_state.accessible_lcercles)]["lregion"].unique()
+    user_cercles = st.session_state.accessible_lcercles
+    allowed_regions = gdf[gdf["lcercle"].isin(user_cercles)]["lregion"].unique()
     regions = [r for r in all_regions if r in allowed_regions]
 
 region = st.sidebar.selectbox("Region", regions)
@@ -127,10 +128,10 @@ gdf_commune = gdf_c[gdf_c["lcommune"] == commune]
 se_list = ["No filter"] + unique_clean(gdf_commune["num_se"])
 se_selected = st.sidebar.selectbox("SE (num_se)", se_list)
 
-gdf_se = gdf_commune if se_selected == "No filter" else gdf_commune[gdf_commune["num_se"] == se_selected]
+gdf_se = gdf_commune if se_selected=="No filter" else gdf_commune[gdf_commune["num_se"]==se_selected]
 
 # =========================================================
-# MAP
+# FOLIUM MAP
 # =========================================================
 if not gdf_se.empty:
     minx, miny, maxx, maxy = gdf_se.total_bounds
@@ -143,11 +144,13 @@ if not gdf_se.empty:
         name="Google Satellite"
     ).add_to(m)
 
+    se_group = folium.FeatureGroup(name="SE Polygons", show=True)
     folium.GeoJson(
         gdf_se,
         tooltip=folium.GeoJsonTooltip(fields=["num_se","pop_se"], aliases=["SE","Population"]),
         style_function=lambda f: {"color":"blue","weight":3,"fillColor":"cyan","fillOpacity":0.4}
-    ).add_to(m)
+    ).add_to(se_group)
+    se_group.add_to(m)
 
     MeasureControl().add_to(m)
     Draw(export=True).add_to(m)
@@ -157,34 +160,29 @@ if not gdf_se.empty:
     st_folium(m, height=550, use_container_width=True)
 
 # =========================================================
-# GOOGLE MAPS + DYNAMIC KML EXPORT
+# SE NAVIGATION & KML DOWNLOAD (DYNAMIC - ONLY SELECTED SE)
 # =========================================================
-if se_selected != "No filter" and not gdf_se.empty:
+if se_selected!="No filter" and not gdf_se.empty:
 
-    st.markdown("### 🧭 Navigate & Export Selected SE")
+    st.markdown("### 🧭 Navigate & Download Selected SE")
 
     centroid = gdf_se.geometry.unary_union.centroid
     lat, lon = centroid.y, centroid.x
-
     google_maps_url = f"https://www.google.com/maps/@{lat},{lon},18z"
 
     st.markdown(
         f'<a href="{google_maps_url}" target="_blank">'
-        f'<button style="background-color:#4CAF50;color:white;'
-        f'padding:10px 20px;border:none;border-radius:5px;'
-        f'font-size:16px;">'
-        f'🚗 Open Selected SE in Google Maps'
-        f'</button></a>',
+        f'<button style="background-color:#4CAF50;color:white;padding:10px 20px;'
+        f'border:none;border-radius:5px;font-size:16px;">'
+        f'🚗 Open SE in Google Maps (centroid)</button></a>',
         unsafe_allow_html=True
     )
 
-    # Dynamic KML generation (ONLY selected SE)
     try:
         with tempfile.NamedTemporaryFile(delete=False, suffix=".kml") as tmp:
             gdf_kml = gdf_se.to_crs(epsg=4326)
             gdf_kml.to_file(tmp.name, driver="KML")
-
-            with open(tmp.name, "rb") as f:
+            with open(tmp.name,"rb") as f:
                 kml_bytes = f.read()
 
         st.download_button(
@@ -194,7 +192,7 @@ if se_selected != "No filter" and not gdf_se.empty:
             mime="application/vnd.google-earth.kml+xml"
         )
 
-        st.info("Upload this file to Google My Maps to display the polygon.")
+        st.info("Upload this file to Google My Maps to visualize the polygon.")
 
     except Exception as e:
         st.error(f"❌ Error generating KML: {e}")
