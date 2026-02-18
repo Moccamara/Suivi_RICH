@@ -229,59 +229,33 @@ if not gdf_se.empty:
 if se_selected != "No filter" and not gdf_se.empty:
     st.markdown("### 🧭 Navigate & Download Selected SE")
 
-    # Centroid button for Google Maps
+    # =========================================================
+    # Google Maps centroid button
+    # =========================================================
     centroid = gdf_se.geometry.unary_union.centroid
     lat, lon = centroid.y, centroid.x
-    google_maps_url = f"https://www.google.com/maps/@{lat},{lon},18z"
+    google_maps_url = f"https://www.google.com/maps/search/?api=1&query={lat},{lon}"
     st.markdown(
         f'<a href="{google_maps_url}" target="_blank">'
-        f'<button style="background-color:#4CAF50;color:white;padding:10px 20px;'
+        f'<button style="background-color:#FF0000;color:white;padding:10px 20px;'
         f'border:none;border-radius:5px;font-size:16px;">'
-        f'🚗 Open SE in Google Maps (centroid)</button></a>',
+        f'🚗 Open SE Centroid in Google Maps</button></a>',
         unsafe_allow_html=True
     )
 
-    # KML download (dynamic generation if file does not exist)
+    # =========================================================
+    # Dynamic KML download including polygon + centroid
+    # =========================================================
     try:
         import tempfile
+        from fastkml import kml
+        from shapely.geometry import Point
 
-        # Try pre-existing KML first
-        kml_path = f"Suivi_RICH/data/kml/SE_{se_selected}.kml"
-        if os.path.exists(kml_path):
-            with open(kml_path, "rb") as f:
-                kml_bytes = f.read()
-        else:
-            # Generate temporary KML
-            with tempfile.NamedTemporaryFile(delete=False, suffix=".kml") as tmp:
-                gdf_se.to_crs(epsg=4326).to_file(tmp.name, driver="KML")
-                with open(tmp.name, "rb") as f:
-                    kml_bytes = f.read()
-
-        st.download_button(
-            label="📥 Download SE Polygon (KML) for Google My Maps",
-            data=kml_bytes,
-            file_name=f"SE_{se_selected}.kml",
-            mime="application/vnd.google-earth.kml+xml"
-        )
-        st.info("To view the polygon in Google My Maps, upload this KML to https://www.google.com/mymaps")
-
-    except Exception as e:
-        st.error(f"❌ Error generating KML: {e}")
-
-
-import tempfile
-from fastkml import kml
-from shapely.geometry import Point
-
-if se_selected != "No filter" and not gdf_se.empty:
-    try:
-        # Create temporary KML file
         with tempfile.NamedTemporaryFile(delete=False, suffix=".kml") as tmp:
-            # Save SE polygon first
+            # Save SE polygon to temporary KML
             gdf_se.to_crs(epsg=4326).to_file(tmp.name, driver="KML")
 
-            # Add centroid as red Placemark
-            centroid = gdf_se.geometry.unary_union.centroid
+            # Add centroid as Placemark in the same KML
             k = kml.KML()
             doc = kml.Document()
             placemark = kml.Placemark()
@@ -290,12 +264,12 @@ if se_selected != "No filter" and not gdf_se.empty:
             doc.append(placemark)
             k.append(doc)
 
-            # Write KML with centroid included
+            # Overwrite KML with centroid included
             with open(tmp.name, "wb") as f:
                 f.write(k.to_string(prettyprint=True).encode("utf-8"))
 
-            # Read for Streamlit download
-            with open(tmp.name,"rb") as f:
+            # Read KML bytes for Streamlit download
+            with open(tmp.name, "rb") as f:
                 kml_bytes = f.read()
 
         st.download_button(
@@ -305,9 +279,11 @@ if se_selected != "No filter" and not gdf_se.empty:
             mime="application/vnd.google-earth.kml+xml"
         )
 
-        st.info("✅ KML includes SE polygon and red centroid for Google My Maps")
+        st.info("✅ KML includes SE polygon and centroid. Upload to Google My Maps to view both.")
+
     except Exception as e:
         st.error(f"❌ Error generating KML: {e}")
+
 
 
 
@@ -321,6 +297,7 @@ st.markdown("""
 **- Abdoul Karim DIAWARA**, Chef de Division Cartographie et SIG  
 **- Dr. Mahamadou CAMARA, PhD – Geomatics Engineering**  
 """)
+
 
 
 
