@@ -229,64 +229,31 @@ if not gdf_se.empty:
 if se_selected != "No filter" and not gdf_se.empty:
     st.markdown("### 🧭 Navigate & Download Selected SE")
 
-    # =========================================================
-    # Google Maps centroid button
-    # =========================================================
+    # Centroid button for Google Maps
     centroid = gdf_se.geometry.unary_union.centroid
     lat, lon = centroid.y, centroid.x
-    google_maps_url = f"https://www.google.com/maps/search/?api=1&query={lat},{lon}"
+    google_maps_url = f"https://www.google.com/maps/@{lat},{lon},18z"
     st.markdown(
         f'<a href="{google_maps_url}" target="_blank">'
-        f'<button style="background-color:#FF0000;color:white;padding:10px 20px;'
-        f'border:none;border-radius:5px;font-size:16px;">'
-        f'🚗 Open SE Centroid in Google Maps</button></a>',
+        f'<button style="background-color:#4CAF50;color:white;padding:10px 20px;border:none;border-radius:5px;font-size:16px;">'
+        f'🚗 Open SE in Google Maps (centroid)</button></a>',
         unsafe_allow_html=True
     )
 
-    # =========================================================
-    # Dynamic KML download including polygon + centroid
-    # =========================================================
-    try:
-        import tempfile
-        from fastkml import kml
-        from shapely.geometry import Point
-
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".kml") as tmp:
-            # Save SE polygon to temporary KML
-            gdf_se.to_crs(epsg=4326).to_file(tmp.name, driver="KML")
-
-            # Add centroid as Placemark in the same KML
-            k = kml.KML()
-            doc = kml.Document()
-            placemark = kml.Placemark()
-            placemark.name = "SE Centroid"
-            placemark.geometry = Point(centroid.x, centroid.y)
-            doc.append(placemark)
-            k.append(doc)
-
-            # Overwrite KML with centroid included
-            with open(tmp.name, "wb") as f:
-                f.write(k.to_string(prettyprint=True).encode("utf-8"))
-
-            # Read KML bytes for Streamlit download
-            with open(tmp.name, "rb") as f:
-                kml_bytes = f.read()
-
+    # Create KML file for download (only selected SE)
+    kml_path = f"Suivi_RICH/data/kml/SE_{se_selected}.kml"
+    if os.path.exists(kml_path):
+        with open(kml_path,"rb") as f:
+            kml_bytes = f.read()
         st.download_button(
-            label="📥 Download SE Polygon + Centroid (KML)",
+            label="📥 Download SE Polygon (KML) for Google My Maps",
             data=kml_bytes,
-            file_name=f"SE_{se_selected}_with_centroid.kml",
+            file_name=f"SE_{se_selected}.kml",
             mime="application/vnd.google-earth.kml+xml"
         )
-
-        st.info("✅ KML includes SE polygon and centroid. Upload to Google My Maps to view both.")
-
-    except Exception as e:
-        st.error(f"❌ Error generating KML: {e}")
-
-
-
-
+        st.info("To view the polygon in Google Maps, upload this KML to https://www.google.com/mymaps")
+    else:
+        st.warning(f"KML file for SE {se_selected} not found in repo.")
 # =========================================================
 # FOOTER
 # =========================================================
@@ -297,6 +264,7 @@ st.markdown("""
 **- Abdoul Karim DIAWARA**, Chef de Division Cartographie et SIG  
 **- Dr. Mahamadou CAMARA, PhD – Geomatics Engineering**  
 """)
+
 
 
 
