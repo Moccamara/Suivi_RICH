@@ -13,9 +13,6 @@ st.set_page_config(layout="wide", page_title="REACH–Mali Suivi")
 st.title("🌍 RICH–Mali Geospatial Monitoring Dashboard")
 
 # =========================================================
-# USERS AND Cercle
-# =========================================================
-# =========================================================
 # USERS
 # =========================================================
 USERS = {
@@ -63,6 +60,7 @@ if not st.session_state.auth_ok:
             st.sidebar.error("❌ Invalid login or password")
 
     st.stop()
+
 
 # =========================================================
 # LOAD EMOP SE POLYGONS
@@ -288,6 +286,7 @@ st.markdown("""
 **- Abdoul Karim DIAWARA**, Chef de Division Cartographie et SIG  
 **- Dr. Mahamadou CAMARA, PhD – Geomatics Engineering**  
 """)
+
 
 
 
