@@ -5,7 +5,8 @@ from streamlit_folium import st_folium
 from folium.plugins import MeasureControl, Draw
 import pandas as pd
 import io
-import tempfile
+import os
+import tempfile   # ✅ added for dynamic KML
 
 # =========================================================
 # APP CONFIG
@@ -104,6 +105,7 @@ def unique_clean(series):
 st.sidebar.markdown("### 🗂️ Attribute Query")
 
 all_regions = unique_clean(gdf["lregion"])
+
 if st.session_state.user_role == "Admin":
     regions = all_regions
 else:
@@ -160,7 +162,7 @@ if not gdf_se.empty:
     st_folium(m, height=550, use_container_width=True)
 
 # =========================================================
-# SE NAVIGATION & KML DOWNLOAD (DYNAMIC - ONLY SELECTED SE)
+# SE NAVIGATION & KML DOWNLOAD (UPDATED ONLY HERE)
 # =========================================================
 if se_selected!="No filter" and not gdf_se.empty:
 
@@ -178,6 +180,7 @@ if se_selected!="No filter" and not gdf_se.empty:
         unsafe_allow_html=True
     )
 
+    # ✅ DYNAMIC KML GENERATION (NO STATIC FILE NEEDED)
     try:
         with tempfile.NamedTemporaryFile(delete=False, suffix=".kml") as tmp:
             gdf_kml = gdf_se.to_crs(epsg=4326)
