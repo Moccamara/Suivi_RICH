@@ -231,10 +231,6 @@ if se_selected != "No filter" and not gdf_se.empty:
             st.warning(f"KML file for SE {se_selected} not found on GitHub.")
     except Exception as e:
         st.error(f"❌ Error fetching KML from GitHub: {e}")
-
-
-
-
 # =========================================================
 # FOOTER
 # =========================================================
@@ -245,5 +241,6 @@ st.markdown("""
 **- Abdoul Karim DIAWARA**, Chef de Division Cartographie et SIG  
 **- Dr. Mahamadou CAMARA, PhD – Geomatics Engineering**  
 """)
+
 
 
