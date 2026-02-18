@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+<Document id="root_doc">
+<Schema name="SE_11010015.0" id="SE_11010015.0">
+	<SimpleField name="fid" type="string"></SimpleField>
+	<SimpleField name="id" type="string"></SimpleField>
+	<SimpleField name="objectid" type="string"></SimpleField>
+	<SimpleField name="region" type="string"></SimpleField>
+	<SimpleField name="lregion" type="string"></SimpleField>
+	<SimpleField name="cercle" type="string"></SimpleField>
+	<SimpleField name="lcercle" type="string"></SimpleField>
+	<SimpleField name="commune" type="string"></SimpleField>
+	<SimpleField name="lcommune" type="string"></SimpleField>
+	<SimpleField name="type_com" type="string"></SimpleField>
+	<SimpleField name="num_se" type="string"></SimpleField>
+	<SimpleField name="num_dd" type="string"></SimpleField>
+	<SimpleField name="pop_se" type="string"></SimpleField>
+	<SimpleField name="idzc" type="string"></SimpleField>
+	<SimpleField name="iddd" type="string"></SimpleField>
+	<SimpleField name="idse" type="string"></SimpleField>
+	<SimpleField name="resultat_c" type="string"></SimpleField>
+	<SimpleField name="statut_se" type="string"></SimpleField>
+	<SimpleField name="mode_vie_c" type="string"></SimpleField>
+	<SimpleField name="statut_col" type="string"></SimpleField>
+	<SimpleField name="emprise" type="string"></SimpleField>
+	<SimpleField name="affiche_in" type="string"></SimpleField>
+	<SimpleField name="zone" type="string"></SimpleField>
+	<SimpleField name="source" type="string"></SimpleField>
+	<SimpleField name="date_modif" type="string"></SimpleField>
+	<SimpleField name="observatio" type="string"></SimpleField>
+	<SimpleField name="shape_leng" type="string"></SimpleField>
+	<SimpleField name="shape_area" type="string"></SimpleField>
+</Schema>
+<Folder><name>SE_11010015.0</name>
+  <Placemark id="SE_11010015.0.1">
+	<name>88895.0</name>
+	<description>4744.0</description>
+	<Style><LineStyle><color>ff0000ff</color></LineStyle><PolyStyle><fill>0</fill></PolyStyle></Style>
+	<ExtendedData><SchemaData schemaUrl="#SE_11010015.0">
+		<SimpleData name="fid">4753.0</SimpleData>
+		<SimpleData name="id">01</SimpleData>
+		<SimpleData name="objectid">Kayes</SimpleData>
+		<SimpleData name="region">11</SimpleData>
+		<SimpleData name="lregion">Kayes</SimpleData>
+		<SimpleData name="cercle">1101</SimpleData>
+		<SimpleData name="lcercle">Kayes commune</SimpleData>
+		<SimpleData name="commune">UR</SimpleData>
+		<SimpleData name="lcommune">0015</SimpleData>
+		<SimpleData name="type_com">003</SimpleData>
+		<SimpleData name="num_se">829.0</SimpleData>
+		<SimpleData name="num_dd">1109.0</SimpleData>
+		<SimpleData name="pop_se">1101003.0</SimpleData>
+		<SimpleData name="idzc">11010015.0</SimpleData>
+		<SimpleData name="iddd">Accessible</SimpleData>
+		<SimpleData name="idse">SE Sedentaire</SimpleData>
+		<SimpleData name="resultat_c">Commune Sedentaire</SimpleData>
+		<SimpleData name="statut_se">CAPI</SimpleData>
+		<SimpleData name="mode_vie_c">Non</SimpleData>
+		<SimpleData name="statut_col">Oui</SimpleData>
+		<SimpleData name="emprise">CAPI</SimpleData>
+		<SimpleData name="affiche_in">Carto RGPH5 2019-2020</SimpleData>
+		<SimpleData name="date_modif">4.6523e-06</SimpleData>
+	</SchemaData></ExtendedData>
+      <Polygon><outerBoundaryIs><LinearRing><coordinates>-11.4350512529999,14.459768415 -11.4339768099999,14.4594793520001 -11.433141221,14.459254549 -11.4327029529999,14.4591366400001 -11.4331847409999,14.457720699 -11.433187335,14.4577130750001 -11.433235193,14.457572423 -11.43327498,14.4574554920001 -11.433275243,14.4574547190001 -11.433355354,14.4574807170001 -11.433467789,14.457517205 -11.4353307989999,14.458121803 -11.43588912,14.4583029940001 -11.435873994,14.4583440100001 -11.4356036889999,14.459076996 -11.4355899349999,14.459116663 -11.435589272,14.459118382 -11.43536137,14.4597090030001 -11.435332377,14.4597796150001 -11.4353205109999,14.459808514 -11.435322577,14.4598093230001 -11.4353078259999,14.459847322 -11.4350512529999,14.459768415</coordinates></LinearRing></outerBoundaryIs></Polygon>
+  </Placemark>
+</Folder>
+</Document></kml>
