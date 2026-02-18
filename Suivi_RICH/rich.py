@@ -2,8 +2,10 @@ import streamlit as st
 import geopandas as gpd
 import pandas as pd
 import io
+import folium
+from streamlit_folium import st_folium
+from folium.plugins import MeasureControl, Draw
 import os
-import requests
 
 # =========================================================
 # APP CONFIG
@@ -92,8 +94,7 @@ with st.sidebar:
 # UNIQUE CLEAN FUNCTION
 # =========================================================
 def unique_clean(series):
-    if isinstance(series, pd.DataFrame): 
-        series = series.iloc[:,0]
+    if isinstance(series, pd.DataFrame): series = series.iloc[:,0]
     return sorted(series.dropna().astype(str).str.strip().unique())
 
 # =========================================================
@@ -157,22 +158,9 @@ if csv_file is not None:
 
         # Filter points within selected commune
         gdf_commune_proj = gdf_commune.to_crs(gpts.crs)
-        points_in_commune = gpd.sjoin(
-            gpts, 
-            gdf_commune_proj[["geometry","num_se"]], 
-            how="inner", 
-            predicate="within"
-        )
-
-        # Fix KeyError: check which column contains SE id
-        if "num_se_right" in points_in_commune.columns:
-            points_in_commune["num_se_str"] = points_in_commune["num_se_right"].astype(str)
-        elif "num_se" in points_in_commune.columns:
-            points_in_commune["num_se_str"] = points_in_commune["num_se"].astype(str)
-        else:
-            points_in_commune["num_se_str"] = "Unknown"
-
-        csv_se_list = ["No filter"] + sorted(points_in_commune["num_se_str"].dropna().unique())
+        points_in_commune = gpd.sjoin(gpts, gdf_commune_proj[["geometry","num_se"]], how="inner", predicate="within")
+        points_in_commune["num_se_str"] = points_in_commune["num_se"].astype(str)
+        csv_se_list = ["No filter"] + sorted(points_in_commune["num_se"].dropna().unique().astype(str))
         csv_se_selected = st.sidebar.selectbox("CSV num_se", csv_se_list)
         csv_points_filtered = points_in_commune if csv_se_selected=="No filter" else points_in_commune[points_in_commune["num_se_str"]==csv_se_selected]
         st.sidebar.success(f"✅ {len(csv_points_filtered)} points in selected commune")
@@ -207,16 +195,15 @@ if not gdf_se.empty:
     st_folium(m, height=550, use_container_width=True)
 
 # =========================================================
-# NAVIGATION & KML DOWNLOAD FROM GITHUB
+# NAVIGATION & KML DOWNLOAD
 # =========================================================
 if se_selected != "No filter" and not gdf_se.empty:
     st.markdown("### 🧭 Navigate & Download Selected SE")
-
+    
     # 1️⃣ Google Maps Button (centroid)
     centroid = gdf_se.geometry.unary_union.centroid
     lat, lon = centroid.y, centroid.x
     google_maps_url = f"https://www.google.com/maps/@{lat},{lon},18z"
-    
     st.markdown(
         f'<a href="{google_maps_url}" target="_blank">'
         f'<button style="background-color:#4CAF50;color:white;padding:10px 20px;border:none;border-radius:5px;font-size:16px;">'
@@ -224,22 +211,19 @@ if se_selected != "No filter" and not gdf_se.empty:
         unsafe_allow_html=True
     )
 
-    # 2️⃣ Download KML from GitHub
-    github_raw_url = f"https://raw.githubusercontent.com/username/repo_name/main/kml/SE_{se_selected}.kml"
-    try:
-        response = requests.get(github_raw_url)
-        if response.status_code == 200:
-            kml_bytes = response.content
-            st.download_button(
-                label="📥 Download SE Polygon (KML) for Google My Maps",
-                data=kml_bytes,
-                file_name=f"SE_{se_selected}.kml",
-                mime="application/vnd.google-earth.kml+xml"
-            )
-        else:
-            st.warning(f"KML file for SE {se_selected} not found on GitHub.")
-    except Exception as e:
-        st.error(f"❌ Error fetching KML from GitHub: {e}")
+    # 2️⃣ Download KML from repo
+    kml_path = f"Suivi_RICH/data/kml/SE_{se_selected}.kml"
+    if os.path.exists(kml_path):
+        with open(kml_path, "rb") as f:
+            kml_bytes = f.read()
+        st.download_button(
+            label="📥 Download SE Polygon (KML) for Google My Maps",
+            data=kml_bytes,
+            file_name=f"SE_{se_selected}.kml",
+            mime="application/vnd.google-earth.kml+xml"
+        )
+    else:
+        st.warning(f"KML file for SE {se_selected} not found in repo.")
 
 # =========================================================
 # FOOTER
