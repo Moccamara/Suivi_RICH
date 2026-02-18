@@ -314,21 +314,23 @@ if se_selected != "No filter" and not gdf_se.empty:
     )
 
     # 2️⃣ Download KML from GitHub
-    github_raw_url = gpd.read_file("Suivi_RICH/data/kml/SE_{se_selected}.kml"
-    try:
-        response = requests.get(github_raw_url)
-        if response.status_code == 200:
-            kml_bytes = response.content
-            st.download_button(
-                label="📥 Download SE Polygon (KML) for Google My Maps",
-                data=kml_bytes,
-                file_name=f"SE_{se_selected}.kml",
-                mime="application/vnd.google-earth.kml+xml"
-            )
-        else:
-            st.warning(f"KML file for SE {se_selected} not found on GitHub.")
-    except Exception as e:
-        st.error(f"❌ Error fetching KML from GitHub: {e}")
+    # 2️⃣ Download KML from local repo
+import os
+
+kml_path = f"Suivi_RICH/data/kml/SE_{se_selected}.kml"
+
+if os.path.exists(kml_path):
+    with open(kml_path, "rb") as f:
+        kml_bytes = f.read()
+    st.download_button(
+        label="📥 Download SE Polygon (KML) for Google My Maps",
+        data=kml_bytes,
+        file_name=f"SE_{se_selected}.kml",
+        mime="application/vnd.google-earth.kml+xml"
+    )
+else:
+    st.warning(f"KML file for SE {se_selected} not found in repo.")
+
 
 # =========================================================
 # FOOTER
@@ -340,6 +342,7 @@ st.markdown("""
 **- Abdoul Karim DIAWARA**, Chef de Division Cartographie et SIG  
 **- Dr. Mahamadou CAMARA, PhD – Geomatics Engineering**  
 """)
+
 
 
 
