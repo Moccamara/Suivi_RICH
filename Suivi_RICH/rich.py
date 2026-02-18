@@ -298,6 +298,31 @@ if not gdf_se.empty:
     st_folium(m, height=550, use_container_width=True)
 
 # =========================================================
+# NAVIGATE TO SELECTED SE (BEST PLACE HERE)
+# =========================================================
+if not gdf_se.empty and se_selected != "No filter":
+
+    se_geom = gdf_se.geometry.unary_union
+
+    if se_geom and not se_geom.is_empty:
+        centroid = se_geom.centroid
+        lat = centroid.y
+        lon = centroid.x
+
+        google_maps_url = (
+            f"https://www.google.com/maps/dir/?api=1"
+            f"&destination={lat},{lon}"
+            f"&travelmode=driving"
+        )
+
+        st.markdown("### 🚗 Field Navigation")
+
+        st.link_button(
+            "🧭 Start Navigation in Google Maps",
+            google_maps_url
+        )
+
+# =========================================================
 # FOOTER
 # =========================================================
 st.markdown("""
@@ -307,6 +332,7 @@ st.markdown("""
 **- Abdoul Karim DIAWARA**, Chef de Division Cartographie et SIG  
 **- Dr. Mahamadou CAMARA, PhD – Geomatics Engineering**  
 """)
+
 
 
 
