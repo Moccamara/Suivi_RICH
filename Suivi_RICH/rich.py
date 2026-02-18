@@ -153,11 +153,6 @@ gdf_se = (
 # =========================================================
 # CSV UPLOAD AND FILTER BY CSV num_se BASED ON SELECTED COMMUNE
 # =========================================================
-import io  # make sure at the top
-
-# =========================================================
-# CSV UPLOAD AND FILTER BY CSV num_se BASED ON SELECTED COMMUNE
-# =========================================================
 st.sidebar.markdown("### 📥 Upload CSV Points")
 csv_file = st.sidebar.file_uploader("Upload CSV", type=["csv"])
 csv_points_filtered = None
@@ -319,7 +314,7 @@ if se_selected != "No filter" and not gdf_se.empty:
     )
 
     # 2️⃣ Download KML from GitHub
-    github_raw_url = f"https://raw.githubusercontent.com/username/repo_name/main/kml/SE_{se_selected}.kml"
+    github_raw_url = gpd.read_file("Suivi_RICH/data/kml/SE_{se_selected}.kml"
     try:
         response = requests.get(github_raw_url)
         if response.status_code == 200:
@@ -345,6 +340,7 @@ st.markdown("""
 **- Abdoul Karim DIAWARA**, Chef de Division Cartographie et SIG  
 **- Dr. Mahamadou CAMARA, PhD – Geomatics Engineering**  
 """)
+
 
 
 
