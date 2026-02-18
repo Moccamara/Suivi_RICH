@@ -44,10 +44,8 @@ def logout():
 # =========================================================
 if not st.session_state.auth_ok:
     st.sidebar.header("🔐 Login")
-
     username = st.sidebar.text_input("Login")
     password = st.sidebar.text_input("Password", type="password")
-
     if st.sidebar.button("Login"):
         user = USERS.get(username)
         if user and password == user["password"]:
@@ -61,7 +59,7 @@ if not st.session_state.auth_ok:
     st.stop()
 
 # =========================================================
-# LOAD EMOP SE POLYGONS
+# LOAD SE POLYGONS
 # =========================================================
 @st.cache_data(show_spinner=False)
 def load_se_data():
@@ -70,7 +68,7 @@ def load_se_data():
         gdf = gdf.set_crs(epsg=4326)
     else:
         gdf = gdf.to_crs(epsg=4326)
-    gdf.columns = [c.strip() for c in gdf.columns]  # clean column names
+    gdf.columns = [c.strip() for c in gdf.columns]
     for col in ["lregion","lcercle","lcommune","num_se","pop_se"]:
         if col not in gdf.columns:
             gdf[col] = None
@@ -93,7 +91,7 @@ with st.sidebar:
         logout()
 
 # =========================================================
-# SAFE UNIQUE FUNCTION
+# HELPER FUNCTION
 # =========================================================
 def unique_clean(series):
     if isinstance(series, pd.DataFrame): 
@@ -146,7 +144,8 @@ if csv_file is not None:
     sep = "\t" if "\t" in first_line else ";" if ";" in first_line else ","
 
     try:
-        df = pd.read_csv(io.StringIO(content), sep=sep, engine="python", on_bad_lines="skip", encoding="utf-8", skip_blank_lines=True)
+        df = pd.read_csv(io.StringIO(content), sep=sep, engine="python",
+                         on_bad_lines="skip", encoding="utf-8", skip_blank_lines=True)
     except Exception as e:
         st.sidebar.error(f"❌ Failed to read CSV: {e}")
         df = None
@@ -168,12 +167,10 @@ if csv_file is not None:
         points_in_commune["num_se"] = pd.to_numeric(points_in_commune[num_se_col], errors="coerce").astype("Int64")
         points_in_commune["num_se_str"] = points_in_commune["num_se"].astype(str)
 
-        valid_se = points_in_commune["num_se"].dropna().unique()
-        valid_se_sorted = sorted(valid_se)
+        valid_se_sorted = sorted(points_in_commune["num_se"].dropna().unique())
         csv_se_list = ["No filter"] + [str(x) for x in valid_se_sorted]
-
         csv_se_selected = st.sidebar.selectbox("CSV num_se", csv_se_list)
-        csv_points_filtered = points_in_commune if csv_se_selected=="No filter" else points_in_commune[points_in_commune["num_se_str"]==csv_se_selected]
+        csv_points_filtered = points_in_commune if csv_se_selected == "No filter" else points_in_commune[points_in_commune["num_se_str"] == csv_se_selected]
         st.sidebar.success(f"✅ {len(csv_points_filtered)} points in selected commune")
     else:
         st.sidebar.error(f"CSV must contain latitude & longitude columns. Found: {df.columns.tolist()}")
@@ -183,17 +180,12 @@ if csv_file is not None:
 # =========================================================
 if not gdf_se.empty:
     minx, miny, maxx, maxy = gdf_se.total_bounds
-    m = folium.Map(location=[(miny+maxy)/2, (minx+maxx)/2], zoom_start=13, tiles=None)
+    m = folium.Map(location=[(miny+maxy)/2,(minx+maxx)/2], zoom_start=13, tiles=None)
 
     # Base maps
     folium.TileLayer("OpenStreetMap", name="OpenStreetMap").add_to(m)
-    folium.TileLayer(
-        tiles="https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}",
-        attr="Google",
-        name="Google Satellite",
-        overlay=False,
-        control=True
-    ).add_to(m)
+    folium.TileLayer(tiles="https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}",
+                     attr="Google", name="Google Satellite", overlay=False, control=True).add_to(m)
 
     # SE polygons
     se_group = folium.FeatureGroup(name="SE Polygons", show=True)
@@ -204,18 +196,13 @@ if not gdf_se.empty:
     ).add_to(se_group)
     se_group.add_to(m)
 
-    # CSV points overlay
+    # CSV points
     if csv_points_filtered is not None and not csv_points_filtered.empty:
         csv_group = folium.FeatureGroup(name="CSV Points", show=True)
         for _, r in csv_points_filtered.iterrows():
-            folium.CircleMarker(
-                location=[r.geometry.y, r.geometry.x],
-                radius=5,
-                color="red",
-                fill=True,
-                fill_opacity=0.9,
-                tooltip=f"Point Concession: SE {r.get('num_se','N/A')}"
-            ).add_to(csv_group)
+            folium.CircleMarker(location=[r.geometry.y, r.geometry.x],
+                                radius=5, color="red", fill=True, fill_opacity=0.9,
+                                tooltip=f"Point Concession: SE {r.get('num_se','N/A')}").add_to(csv_group)
         csv_group.add_to(m)
 
     # Tools
@@ -223,38 +210,33 @@ if not gdf_se.empty:
     Draw(export=True).add_to(m)
     folium.LayerControl(collapsed=True).add_to(m)
 
-    m.fit_bounds([[miny, minx], [maxy, maxx]])
+    m.fit_bounds([[miny,minx],[maxy,maxx]])
     st_folium(m, height=550, use_container_width=True)
 
 # =========================================================
-# NAVIGATION & KML DOWNLOAD
+# DOWNLOAD & GOOGLE MAPS LINK
 # =========================================================
 if se_selected != "No filter" and not gdf_se.empty:
     st.markdown("### 🧭 Navigate & Download Selected SE")
+    # Export selected SE to KML
+    kml_path = f"Suivi_RICH/data/kml/SE_{se_selected}.kml"
+    os.makedirs(os.path.dirname(kml_path), exist_ok=True)
+    gdf_se.to_file(kml_path, driver="KML")
 
-    centroid = gdf_se.geometry.unary_union.centroid
-    lat, lon = centroid.y, centroid.x
-    google_maps_url = f"https://www.google.com/maps/@{lat},{lon},18z"
-    
+    # Download button
+    with open(kml_path,"rb") as f:
+        kml_bytes = f.read()
+    st.download_button(label="📥 Download SE Polygon (KML) for Google My Maps",
+                       data=kml_bytes, file_name=f"SE_{se_selected}.kml",
+                       mime="application/vnd.google-earth.kml+xml")
+
+    # Google My Maps hint
     st.markdown(
-        f'<a href="{google_maps_url}" target="_blank">'
-        f'<button style="background-color:#4CAF50;color:white;padding:10px 20px;border:none;border-radius:5px;font-size:16px;">'
-        f'🚗 Open SE in Google Maps (centroid)</button></a>',
+        '<a href="https://www.google.com/mymaps" target="_blank">'
+        '<button style="background-color:#4CAF50;color:white;padding:10px 20px;border:none;border-radius:5px;font-size:16px;">'
+        '🚗 Open SE in Google My Maps</button></a>',
         unsafe_allow_html=True
     )
-
-    kml_path = f"Suivi_RICH/data/kml/SE_{se_selected}.kml"
-    if os.path.exists(kml_path):
-        with open(kml_path, "rb") as f:
-            kml_bytes = f.read()
-        st.download_button(
-            label="📥 Download SE Polygon (KML) for Google My Maps",
-            data=kml_bytes,
-            file_name=f"SE_{se_selected}.kml",
-            mime="application/vnd.google-earth.kml+xml"
-        )
-    else:
-        st.warning(f"KML file for SE {se_selected} not found in repo.")
 
 # =========================================================
 # FOOTER
