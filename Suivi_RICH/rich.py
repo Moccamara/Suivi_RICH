@@ -6,7 +6,7 @@ from folium.plugins import MeasureControl, Draw
 import pandas as pd
 import io
 import os
-import tempfile   # ✅ added for dynamic KML
+import tempfile  # only addition
 
 # =========================================================
 # APP CONFIG
@@ -133,36 +133,61 @@ se_selected = st.sidebar.selectbox("SE (num_se)", se_list)
 gdf_se = gdf_commune if se_selected=="No filter" else gdf_commune[gdf_commune["num_se"]==se_selected]
 
 # =========================================================
-# FOLIUM MAP
+# CSV POINTS UPLOAD (RESTORED)
 # =========================================================
-if not gdf_se.empty:
-    minx, miny, maxx, maxy = gdf_se.total_bounds
-    m = folium.Map(location=[(miny+maxy)/2,(minx+maxx)/2], zoom_start=13, tiles=None)
+st.sidebar.markdown("### 📥 Upload CSV Points")
+csv_file = st.sidebar.file_uploader("Upload CSV", type=["csv"])
+csv_points_filtered = None
 
-    folium.TileLayer("OpenStreetMap", name="OpenStreetMap").add_to(m)
-    folium.TileLayer(
-        tiles="https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}",
-        attr="Google",
-        name="Google Satellite"
-    ).add_to(m)
+if csv_file is not None:
+    content = csv_file.read().decode("utf-8", errors="ignore")
+    sep = "\t" if "\t" in content.splitlines()[0] else ";" if ";" in content.splitlines()[0] else ","
 
-    se_group = folium.FeatureGroup(name="SE Polygons", show=True)
-    folium.GeoJson(
-        gdf_se,
-        tooltip=folium.GeoJsonTooltip(fields=["num_se","pop_se"], aliases=["SE","Population"]),
-        style_function=lambda f: {"color":"blue","weight":3,"fillColor":"cyan","fillOpacity":0.4}
-    ).add_to(se_group)
-    se_group.add_to(m)
+    try:
+        df = pd.read_csv(io.StringIO(content), sep=sep, engine="python", on_bad_lines="skip")
+    except Exception as e:
+        st.sidebar.error(f"❌ Failed to read CSV: {e}")
+        df = None
 
-    MeasureControl().add_to(m)
-    Draw(export=True).add_to(m)
-    folium.LayerControl(collapsed=True).add_to(m)
+    if df is not None:
+        df.columns = df.columns.str.lower().str.strip()
 
-    m.fit_bounds([[miny,minx],[maxy,maxx]])
-    st_folium(m, height=550, use_container_width=True)
+        if {"latitude","longitude"}.issubset(df.columns):
+            df["latitude"] = pd.to_numeric(df["latitude"], errors="coerce")
+            df["longitude"] = pd.to_numeric(df["longitude"], errors="coerce")
+            df = df.dropna(subset=["latitude","longitude"])
+
+            gpts = gpd.GeoDataFrame(
+                df,
+                geometry=gpd.points_from_xy(df["longitude"], df["latitude"]),
+                crs="EPSG:4326"
+            )
+
+            gdf_commune_proj = gdf_commune.to_crs(gpts.crs)
+
+            points_in_commune = gpd.sjoin(
+                gpts,
+                gdf_commune_proj[["geometry","num_se"]],
+                how="inner",
+                predicate="within"
+            )
+
+            valid_se_sorted = sorted(points_in_commune["num_se"].dropna().unique())
+            csv_se_list = ["No filter"] + [str(x) for x in valid_se_sorted]
+            csv_se_selected = st.sidebar.selectbox("CSV num_se", csv_se_list)
+
+            csv_points_filtered = (
+                points_in_commune
+                if csv_se_selected=="No filter"
+                else points_in_commune[points_in_commune["num_se"].astype(str)==csv_se_selected]
+            )
+
+            st.sidebar.success(f"✅ {len(csv_points_filtered)} points in selected commune")
+        else:
+            st.sidebar.error("CSV must contain latitude & longitude columns.")
 
 # =========================================================
-# SE NAVIGATION & KML DOWNLOAD (UPDATED ONLY HERE)
+# SE NAVIGATION & DYNAMIC KML
 # =========================================================
 if se_selected!="No filter" and not gdf_se.empty:
 
@@ -180,22 +205,20 @@ if se_selected!="No filter" and not gdf_se.empty:
         unsafe_allow_html=True
     )
 
-    # ✅ DYNAMIC KML GENERATION (NO STATIC FILE NEEDED)
     try:
         with tempfile.NamedTemporaryFile(delete=False, suffix=".kml") as tmp:
-            gdf_kml = gdf_se.to_crs(epsg=4326)
-            gdf_kml.to_file(tmp.name, driver="KML")
+            gdf_se.to_crs(epsg=4326).to_file(tmp.name, driver="KML")
             with open(tmp.name,"rb") as f:
                 kml_bytes = f.read()
 
         st.download_button(
-            label="📥 Download Selected SE Polygon (KML)",
+            label="📥 Download SE Polygon (KML) for Google My Maps",
             data=kml_bytes,
             file_name=f"SE_{se_selected}.kml",
             mime="application/vnd.google-earth.kml+xml"
         )
 
-        st.info("Upload this file to Google My Maps to visualize the polygon.")
+        st.info("To view the polygon in Google My Maps, upload this KML to https://www.google.com/mymaps")
 
     except Exception as e:
         st.error(f"❌ Error generating KML: {e}")
