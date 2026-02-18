@@ -10,7 +10,7 @@ import io  # <-- add this
 # APP CONFIG
 # =========================================================
 st.set_page_config(layout="wide", page_title="REACH–Mali Suivi")
-st.title("🌍 REACH–Mali Geospatial Monitoring Dashboard")
+st.title("🌍 REACH–Mali Geospatial Data Collection Monitoring Dashboard")
 
 # =========================================================
 # USERS
@@ -307,6 +307,7 @@ st.markdown("""
 **- Abdoul Karim DIAWARA**, Chef de Division Cartographie et SIG  
 **- Dr. Mahamadou CAMARA, PhD – Geomatics Engineering**  
 """)
+
 
 
 
