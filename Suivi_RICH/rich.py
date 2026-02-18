@@ -4,7 +4,8 @@ import folium
 from streamlit_folium import st_folium
 from folium.plugins import MeasureControl, Draw
 import pandas as pd
-import io  # <-- add this
+import io
+import os
 
 # =========================================================
 # APP CONFIG
@@ -23,7 +24,7 @@ USERS = {
 }
 
 # =========================================================
-# SESSION INIT (safe initialization)
+# SESSION INIT
 # =========================================================
 st.session_state.setdefault("auth_ok", False)
 st.session_state.setdefault("username", None)
@@ -49,7 +50,6 @@ if not st.session_state.auth_ok:
 
     if st.sidebar.button("Login"):
         user = USERS.get(username)
-
         if user and password == user["password"]:
             st.session_state.auth_ok = True
             st.session_state.username = username
@@ -58,7 +58,6 @@ if not st.session_state.auth_ok:
             st.rerun()
         else:
             st.sidebar.error("❌ Invalid login or password")
-
     st.stop()
 
 # =========================================================
@@ -71,12 +70,13 @@ def load_se_data():
         gdf = gdf.set_crs(epsg=4326)
     else:
         gdf = gdf.to_crs(epsg=4326)
-    gdf.columns = [c.strip() for c in gdf.columns]  # keep exact names
+    gdf.columns = [c.strip() for c in gdf.columns]  # clean column names
     for col in ["lregion","lcercle","lcommune","num_se","pop_se"]:
         if col not in gdf.columns:
             gdf[col] = None
     gdf = gdf[gdf.is_valid & ~gdf.is_empty]
     return gdf
+
 try:
     gdf = load_se_data()
 except Exception as e:
@@ -96,7 +96,8 @@ with st.sidebar:
 # SAFE UNIQUE FUNCTION
 # =========================================================
 def unique_clean(series):
-    if isinstance(series, pd.DataFrame): series = series.iloc[:,0]
+    if isinstance(series, pd.DataFrame): 
+        series = series.iloc[:,0]
     return sorted(series.dropna().astype(str).str.strip().unique())
 
 # =========================================================
@@ -104,152 +105,85 @@ def unique_clean(series):
 # =========================================================
 st.sidebar.markdown("### 🗂️ Attribute Query")
 
-# ---------------------------
 # REGION
-# ---------------------------
 all_regions = unique_clean(gdf["lregion"])
-
 if st.session_state.user_role == "Admin":
     regions = all_regions
 else:
-    # Keep only regions that contain user's cercles
     user_cercles = st.session_state.accessible_lcercles
     allowed_regions = gdf[gdf["lcercle"].isin(user_cercles)]["lregion"].unique()
     regions = [r for r in all_regions if r in allowed_regions]
-
 region = st.sidebar.selectbox("Region", regions)
 gdf_r = gdf[gdf["lregion"] == region]
 
-# ---------------------------
 # CERCLE
-# ---------------------------
 cercles = unique_clean(gdf_r["lcercle"])
-
 if st.session_state.user_role != "Admin":
     cercles = [c for c in cercles if c in st.session_state.accessible_lcercles]
-
 cercle = st.sidebar.selectbox("Cercle", cercles)
 gdf_c = gdf_r[gdf_r["lcercle"] == cercle]
 
-# ---------------------------
 # COMMUNE
-# ---------------------------
 communes = unique_clean(gdf_c["lcommune"])
 commune = st.sidebar.selectbox("Commune", communes)
 gdf_commune = gdf_c[gdf_c["lcommune"] == commune]
 
-# ---------------------------
 # SE
-# ---------------------------
 se_list = ["No filter"] + unique_clean(gdf_commune["num_se"])
 se_selected = st.sidebar.selectbox("SE (num_se)", se_list)
-
-gdf_se = (
-    gdf_commune
-    if se_selected == "No filter"
-    else gdf_commune[gdf_commune["num_se"] == se_selected]
-)
+gdf_se = gdf_commune if se_selected == "No filter" else gdf_commune[gdf_commune["num_se"] == se_selected]
 
 # =========================================================
-# CSV UPLOAD AND FILTER BY CSV num_se BASED ON SELECTED COMMUNE
+# CSV UPLOAD AND FILTER
 # =========================================================
 st.sidebar.markdown("### 📥 Upload CSV Points")
 csv_file = st.sidebar.file_uploader("Upload CSV", type=["csv"])
 csv_points_filtered = None
 
 if csv_file is not None:
-
-    # ---- READ FILE CONTENT FIRST ----
     content = csv_file.read().decode("utf-8", errors="ignore")
     first_line = content.splitlines()[0]
+    sep = "\t" if "\t" in first_line else ";" if ";" in first_line else ","
 
-    # ---- MANUAL SEPARATOR DETECTION ----
-    if "\t" in first_line:
-        sep = "\t"
-    elif ";" in first_line:
-        sep = ";"
-    else:
-        sep = ","
-
-    # ---- READ CSV SAFELY ----
     try:
-        df = pd.read_csv(
-            io.StringIO(content),
-            sep=sep,
-            engine="python",
-            on_bad_lines="skip",
-            encoding="utf-8",
-            skip_blank_lines=True
-        )
+        df = pd.read_csv(io.StringIO(content), sep=sep, engine="python", on_bad_lines="skip", encoding="utf-8", skip_blank_lines=True)
     except Exception as e:
         st.sidebar.error(f"❌ Failed to read CSV: {e}")
         df = None
 
-    if df is not None and {"latitude", "longitude"}.issubset(df.columns):
-
-        # ---- CLEAN COLUMN NAMES ----
+    if df is not None and {"latitude","longitude"}.issubset(df.columns):
         df.columns = df.columns.str.lower().str.strip()
-
-        # Convert to numeric safely
         df["latitude"] = pd.to_numeric(df["latitude"], errors="coerce")
         df["longitude"] = pd.to_numeric(df["longitude"], errors="coerce")
-        df = df.dropna(subset=["latitude", "longitude"])
-
-        # Create GeoDataFrame
-        gpts = gpd.GeoDataFrame(
-            df,
-            geometry=gpd.points_from_xy(df["longitude"], df["latitude"]),
-            crs="EPSG:4326"
-        )
+        df = df.dropna(subset=["latitude","longitude"])
+        gpts = gpd.GeoDataFrame(df, geometry=gpd.points_from_xy(df["longitude"], df["latitude"]), crs="EPSG:4326")
         st.session_state.points_gdf = gpts
 
-        # ---- SPATIAL FILTER INSIDE SELECTED COMMUNE ----
         gdf_commune_proj = gdf_commune.to_crs(gpts.crs)
-
-        # Ensure num_se column exists
         if "num_se" not in gdf_commune_proj.columns:
             gdf_commune_proj["num_se"] = None
 
-        # Spatial join: keep only points within the selected commune
-        points_in_commune = gpd.sjoin(
-            gpts,
-            gdf_commune_proj[["geometry", "num_se"]],
-            how="inner",
-            predicate="within"
-        )
-        # ---- HANDLE POSSIBLE COLUMN RENAMING ----
+        points_in_commune = gpd.sjoin(gpts, gdf_commune_proj[["geometry","num_se"]], how="inner", predicate="within")
         num_se_col = "num_se" if "num_se" in points_in_commune.columns else "num_se_right"
-        # Convert to numeric safely
-        points_in_commune["num_se"] = pd.to_numeric(
-            points_in_commune[num_se_col],
-            errors="coerce"
-        ).astype("Int64")
-
-        # Safe string column for filtering
+        points_in_commune["num_se"] = pd.to_numeric(points_in_commune[num_se_col], errors="coerce").astype("Int64")
         points_in_commune["num_se_str"] = points_in_commune["num_se"].astype(str)
 
-        # ---- CSV num_se FILTER ACCORDING TO COMMUNE AND SORT NUMERICALLY ----
         valid_se = points_in_commune["num_se"].dropna().unique()
-        valid_se_sorted = sorted(valid_se)  # numeric sort
+        valid_se_sorted = sorted(valid_se)
         csv_se_list = ["No filter"] + [str(x) for x in valid_se_sorted]
 
         csv_se_selected = st.sidebar.selectbox("CSV num_se", csv_se_list)
-        csv_points_filtered = (
-            points_in_commune
-            if csv_se_selected == "No filter"
-            else points_in_commune[points_in_commune["num_se_str"] == csv_se_selected]
-        )
+        csv_points_filtered = points_in_commune if csv_se_selected=="No filter" else points_in_commune[points_in_commune["num_se_str"]==csv_se_selected]
         st.sidebar.success(f"✅ {len(csv_points_filtered)} points in selected commune")
     else:
-        st.sidebar.error(
-            f"CSV must contain latitude & longitude columns. Found: {df.columns.tolist()}"
-        )
+        st.sidebar.error(f"CSV must contain latitude & longitude columns. Found: {df.columns.tolist()}")
+
 # =========================================================
 # MAP
 # =========================================================
 if not gdf_se.empty:
     minx, miny, maxx, maxy = gdf_se.total_bounds
-    m = folium.Map(location=[(miny+maxy)/2,(minx+maxx)/2], zoom_start=13, tiles=None)
+    m = folium.Map(location=[(miny+maxy)/2, (minx+maxx)/2], zoom_start=13, tiles=None)
 
     # Base maps
     folium.TileLayer("OpenStreetMap", name="OpenStreetMap").add_to(m)
@@ -261,19 +195,14 @@ if not gdf_se.empty:
         control=True
     ).add_to(m)
 
-    # SE polygons (improved visibility)
-se_group = folium.FeatureGroup(name="SE Polygons", show=True)  # visible by default
-folium.GeoJson(
-    gdf_se,
-    tooltip=folium.GeoJsonTooltip(fields=["num_se","pop_se"], aliases=["SE","Population"]),
-    style_function=lambda feature: {
-        "color": "blue",        # border color
-        "weight": 3,            # thicker border
-        "fillColor": "cyan",    # fill color
-        "fillOpacity": 0.4      # semi-transparent
-    }
-).add_to(se_group)
-se_group.add_to(m)
+    # SE polygons
+    se_group = folium.FeatureGroup(name="SE Polygons", show=True)
+    folium.GeoJson(
+        gdf_se,
+        tooltip=folium.GeoJsonTooltip(fields=["num_se","pop_se"], aliases=["SE","Population"]),
+        style_function=lambda feature: {"color":"blue","weight":3,"fillColor":"cyan","fillOpacity":0.4}
+    ).add_to(se_group)
+    se_group.add_to(m)
 
     # CSV points overlay
     if csv_points_filtered is not None and not csv_points_filtered.empty:
@@ -294,19 +223,15 @@ se_group.add_to(m)
     Draw(export=True).add_to(m)
     folium.LayerControl(collapsed=True).add_to(m)
 
-    m.fit_bounds([[miny,minx],[maxy,maxx]])
+    m.fit_bounds([[miny, minx], [maxy, maxx]])
     st_folium(m, height=550, use_container_width=True)
 
 # =========================================================
-# NAVIGATE TO SELECTED SE (BEST PLACE HERE)
-# =========================================================
-# =========================================================
-# NAVIGATION & KML DOWNLOAD FROM GITHUB
+# NAVIGATION & KML DOWNLOAD
 # =========================================================
 if se_selected != "No filter" and not gdf_se.empty:
     st.markdown("### 🧭 Navigate & Download Selected SE")
 
-    # 1️⃣ Google Maps Button (centroid)
     centroid = gdf_se.geometry.unary_union.centroid
     lat, lon = centroid.y, centroid.x
     google_maps_url = f"https://www.google.com/maps/@{lat},{lon},18z"
@@ -318,80 +243,26 @@ if se_selected != "No filter" and not gdf_se.empty:
         unsafe_allow_html=True
     )
 
-    # 2️⃣ Download KML from GitHub
-    # 2️⃣ Download KML from local repo
-import os
-
-kml_path = f"Suivi_RICH/data/kml/SE_{se_selected}.kml"
-
-if os.path.exists(kml_path):
-    with open(kml_path, "rb") as f:
-        kml_bytes = f.read()
-    st.download_button(
-        label="📥 Download SE Polygon (KML) for Google My Maps",
-        data=kml_bytes,
-        file_name=f"SE_{se_selected}.kml",
-        mime="application/vnd.google-earth.kml+xml"
-    )
-else:
-    st.warning(f"KML file for SE {se_selected} not found in repo.")
-
+    kml_path = f"Suivi_RICH/data/kml/SE_{se_selected}.kml"
+    if os.path.exists(kml_path):
+        with open(kml_path, "rb") as f:
+            kml_bytes = f.read()
+        st.download_button(
+            label="📥 Download SE Polygon (KML) for Google My Maps",
+            data=kml_bytes,
+            file_name=f"SE_{se_selected}.kml",
+            mime="application/vnd.google-earth.kml+xml"
+        )
+    else:
+        st.warning(f"KML file for SE {se_selected} not found in repo.")
 
 # =========================================================
 # FOOTER
 # =========================================================
 st.markdown("""
 ---
-**REACH–MALI Geostial Monitoring**  
+**REACH–MALI Geospatial Monitoring**  
 
 **- Abdoul Karim DIAWARA**, Chef de Division Cartographie et SIG  
 **- Dr. Mahamadou CAMARA, PhD – Geomatics Engineering**  
 """)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
