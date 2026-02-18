@@ -214,29 +214,38 @@ if not gdf_se.empty:
     st_folium(m, height=550, use_container_width=True)
 
 # =========================================================
-# DOWNLOAD & GOOGLE MAPS LINK
+# DOWNLOAD & GOOGLE MAPS LINK (AUTO OPEN)
 # =========================================================
 if se_selected != "No filter" and not gdf_se.empty:
     st.markdown("### 🧭 Navigate & Download Selected SE")
-    # Export selected SE to KML
-    kml_path = f"Suivi_RICH/data/kml/SE_{se_selected}.kml"
-    os.makedirs(os.path.dirname(kml_path), exist_ok=True)
-    gdf_se.to_file(kml_path, driver="KML")
+
+    # Export selected SE to KML in memory
+    kml_buffer = io.BytesIO()
+    gdf_se.to_file(kml_buffer, driver="KML")
+    kml_bytes = kml_buffer.getvalue()
 
     # Download button
-    with open(kml_path,"rb") as f:
-        kml_bytes = f.read()
-    st.download_button(label="📥 Download SE Polygon (KML) for Google My Maps",
-                       data=kml_bytes, file_name=f"SE_{se_selected}.kml",
-                       mime="application/vnd.google-earth.kml+xml")
+    st.download_button(
+        label="📥 Download SE Polygon (KML) for Google My Maps",
+        data=kml_bytes,
+        file_name=f"SE_{se_selected}.kml",
+        mime="application/vnd.google-earth.kml+xml"
+    )
 
-    # Google My Maps hint
+    # Convert KML bytes to base64 string for Google Maps
+    import base64
+    kml_base64 = base64.b64encode(kml_bytes).decode()
+
+    # Create a link to open KML in Google Maps using data URL
+    google_maps_kml_url = f"https://www.google.com/maps/d/u/0/viewer?mid=1&ll=0,0&z=5&kml=data:application/vnd.google-earth.kml+xml;base64,{kml_base64}"
+
     st.markdown(
-        '<a href="https://www.google.com/mymaps" target="_blank">'
-        '<button style="background-color:#4CAF50;color:white;padding:10px 20px;border:none;border-radius:5px;font-size:16px;">'
-        '🚗 Open SE in Google My Maps</button></a>',
+        f'<a href="{google_maps_kml_url}" target="_blank">'
+        f'<button style="background-color:#4CAF50;color:white;padding:10px 20px;border:none;border-radius:5px;font-size:16px;">'
+        f'🚗 Open SE Polygon in Google Maps</button></a>',
         unsafe_allow_html=True
     )
+
 
 # =========================================================
 # FOOTER
@@ -248,3 +257,4 @@ st.markdown("""
 **- Abdoul Karim DIAWARA**, Chef de Division Cartographie et SIG  
 **- Dr. Mahamadou CAMARA, PhD – Geomatics Engineering**  
 """)
+
