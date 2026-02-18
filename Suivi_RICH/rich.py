@@ -87,7 +87,7 @@ except Exception as e:
 # SIDEBAR HEADER
 # =========================================================
 with st.sidebar:
-    st.image("Suivi_RICH/logo/logos.jpg", width=200)
+    st.image("Suivi_RICH/logo/logos.jpg", width=250)
     st.markdown(f"**User:** {st.session_state.username} ({st.session_state.user_role})")
     if st.button("Logout"):
         logout()
@@ -307,6 +307,7 @@ st.markdown("""
 **- Abdoul Karim DIAWARA**, Chef de Division Cartographie et SIG  
 **- Dr. Mahamadou CAMARA, PhD – Geomatics Engineering**  
 """)
+
 
 
 
