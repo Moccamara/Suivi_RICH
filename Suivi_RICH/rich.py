@@ -235,50 +235,27 @@ if se_selected != "No filter" and not gdf_se.empty:
     google_maps_url = f"https://www.google.com/maps/@{lat},{lon},18z"
     st.markdown(
         f'<a href="{google_maps_url}" target="_blank">'
-        f'<button style="background-color:#4CAF50;color:white;padding:10px 20px;border:none;border-radius:5px;font-size:16px;">'
-        f'🚗 Open SE in Google Maps (centroid)</button></a>',
-        unsafe_allow_html=True
-    )
-
-    # Create KML file for download (only selected SE)
-    kml_path = f"Suivi_RICH/data/kml/SE_{se_selected}.kml"
-    if os.path.exists(kml_path):
-        with open(kml_path,"rb") as f:
-            kml_bytes = f.read()
-        st.download_button(
-            label="📥 Download SE Polygon (KML) for Google My Maps",
-            data=kml_bytes,
-            file_name=f"SE_{se_selected}.kml",
-            mime="application/vnd.google-earth.kml+xml"
-        )
-        st.info("To view the polygon in Google Maps, upload this KML to https://www.google.com/mymaps")
-    else:
-        st.warning(f"KML file for SE {se_selected} not found in repo.")
-
-# =========================================================
-# SE NAVIGATION & DYNAMIC KML
-# =========================================================
-if se_selected!="No filter" and not gdf_se.empty:
-
-    st.markdown("### 🧭 Navigate & Download Selected SE")
-
-    centroid = gdf_se.geometry.unary_union.centroid
-    lat, lon = centroid.y, centroid.x
-    google_maps_url = f"https://www.google.com/maps/@{lat},{lon},18z"
-
-    st.markdown(
-        f'<a href="{google_maps_url}" target="_blank">'
         f'<button style="background-color:#4CAF50;color:white;padding:10px 20px;'
         f'border:none;border-radius:5px;font-size:16px;">'
         f'🚗 Open SE in Google Maps (centroid)</button></a>',
         unsafe_allow_html=True
     )
 
+    # KML download (dynamic generation if file does not exist)
     try:
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".kml") as tmp:
-            gdf_se.to_crs(epsg=4326).to_file(tmp.name, driver="KML")
-            with open(tmp.name,"rb") as f:
+        import tempfile
+
+        # Try pre-existing KML first
+        kml_path = f"Suivi_RICH/data/kml/SE_{se_selected}.kml"
+        if os.path.exists(kml_path):
+            with open(kml_path, "rb") as f:
                 kml_bytes = f.read()
+        else:
+            # Generate temporary KML
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".kml") as tmp:
+                gdf_se.to_crs(epsg=4326).to_file(tmp.name, driver="KML")
+                with open(tmp.name, "rb") as f:
+                    kml_bytes = f.read()
 
         st.download_button(
             label="📥 Download SE Polygon (KML) for Google My Maps",
@@ -286,11 +263,11 @@ if se_selected!="No filter" and not gdf_se.empty:
             file_name=f"SE_{se_selected}.kml",
             mime="application/vnd.google-earth.kml+xml"
         )
-
         st.info("To view the polygon in Google My Maps, upload this KML to https://www.google.com/mymaps")
 
     except Exception as e:
         st.error(f"❌ Error generating KML: {e}")
+
 
 # =========================================================
 # FOOTER
@@ -302,4 +279,5 @@ st.markdown("""
 **- Abdoul Karim DIAWARA**, Chef de Division Cartographie et SIG  
 **- Dr. Mahamadou CAMARA, PhD – Geomatics Engineering**  
 """)
+
 
