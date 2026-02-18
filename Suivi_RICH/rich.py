@@ -94,8 +94,7 @@ with st.sidebar:
 # HELPER FUNCTION
 # =========================================================
 def unique_clean(series):
-    if isinstance(series, pd.DataFrame): 
-        series = series.iloc[:,0]
+    if isinstance(series, pd.DataFrame): series = series.iloc[:,0]
     return sorted(series.dropna().astype(str).str.strip().unique())
 
 # =========================================================
@@ -103,7 +102,7 @@ def unique_clean(series):
 # =========================================================
 st.sidebar.markdown("### 🗂️ Attribute Query")
 
-# REGION
+# Region filter
 all_regions = unique_clean(gdf["lregion"])
 if st.session_state.user_role == "Admin":
     regions = all_regions
@@ -111,28 +110,31 @@ else:
     user_cercles = st.session_state.accessible_lcercles
     allowed_regions = gdf[gdf["lcercle"].isin(user_cercles)]["lregion"].unique()
     regions = [r for r in all_regions if r in allowed_regions]
+
 region = st.sidebar.selectbox("Region", regions)
 gdf_r = gdf[gdf["lregion"] == region]
 
-# CERCLE
+# Cercle filter
 cercles = unique_clean(gdf_r["lcercle"])
 if st.session_state.user_role != "Admin":
     cercles = [c for c in cercles if c in st.session_state.accessible_lcercles]
+
 cercle = st.sidebar.selectbox("Cercle", cercles)
 gdf_c = gdf_r[gdf_r["lcercle"] == cercle]
 
-# COMMUNE
+# Commune filter
 communes = unique_clean(gdf_c["lcommune"])
 commune = st.sidebar.selectbox("Commune", communes)
 gdf_commune = gdf_c[gdf_c["lcommune"] == commune]
 
-# SE
+# SE filter
 se_list = ["No filter"] + unique_clean(gdf_commune["num_se"])
 se_selected = st.sidebar.selectbox("SE (num_se)", se_list)
-gdf_se = gdf_commune if se_selected == "No filter" else gdf_commune[gdf_commune["num_se"] == se_selected]
+
+gdf_se = gdf_commune if se_selected=="No filter" else gdf_commune[gdf_commune["num_se"]==se_selected]
 
 # =========================================================
-# CSV UPLOAD AND FILTER
+# CSV POINTS UPLOAD
 # =========================================================
 st.sidebar.markdown("### 📥 Upload CSV Points")
 csv_file = st.sidebar.file_uploader("Upload CSV", type=["csv"])
@@ -140,17 +142,14 @@ csv_points_filtered = None
 
 if csv_file is not None:
     content = csv_file.read().decode("utf-8", errors="ignore")
-    first_line = content.splitlines()[0]
-    sep = "\t" if "\t" in first_line else ";" if ";" in first_line else ","
-
+    sep = "\t" if "\t" in content.splitlines()[0] else ";" if ";" in content.splitlines()[0] else ","
     try:
-        df = pd.read_csv(io.StringIO(content), sep=sep, engine="python",
-                         on_bad_lines="skip", encoding="utf-8", skip_blank_lines=True)
+        df = pd.read_csv(io.StringIO(content), sep=sep, engine="python", on_bad_lines="skip", encoding="utf-8")
     except Exception as e:
         st.sidebar.error(f"❌ Failed to read CSV: {e}")
         df = None
 
-    if df is not None and {"latitude","longitude"}.issubset(df.columns):
+    if df is not None and {"latitude", "longitude"}.issubset(df.columns):
         df.columns = df.columns.str.lower().str.strip()
         df["latitude"] = pd.to_numeric(df["latitude"], errors="coerce")
         df["longitude"] = pd.to_numeric(df["longitude"], errors="coerce")
@@ -158,51 +157,49 @@ if csv_file is not None:
         gpts = gpd.GeoDataFrame(df, geometry=gpd.points_from_xy(df["longitude"], df["latitude"]), crs="EPSG:4326")
         st.session_state.points_gdf = gpts
 
+        # Filter points within selected commune
         gdf_commune_proj = gdf_commune.to_crs(gpts.crs)
         if "num_se" not in gdf_commune_proj.columns:
             gdf_commune_proj["num_se"] = None
-
         points_in_commune = gpd.sjoin(gpts, gdf_commune_proj[["geometry","num_se"]], how="inner", predicate="within")
         num_se_col = "num_se" if "num_se" in points_in_commune.columns else "num_se_right"
         points_in_commune["num_se"] = pd.to_numeric(points_in_commune[num_se_col], errors="coerce").astype("Int64")
         points_in_commune["num_se_str"] = points_in_commune["num_se"].astype(str)
 
+        # CSV SE filter
         valid_se_sorted = sorted(points_in_commune["num_se"].dropna().unique())
         csv_se_list = ["No filter"] + [str(x) for x in valid_se_sorted]
         csv_se_selected = st.sidebar.selectbox("CSV num_se", csv_se_list)
-        csv_points_filtered = points_in_commune if csv_se_selected == "No filter" else points_in_commune[points_in_commune["num_se_str"] == csv_se_selected]
+        csv_points_filtered = points_in_commune if csv_se_selected=="No filter" else points_in_commune[points_in_commune["num_se_str"]==csv_se_selected]
         st.sidebar.success(f"✅ {len(csv_points_filtered)} points in selected commune")
     else:
         st.sidebar.error(f"CSV must contain latitude & longitude columns. Found: {df.columns.tolist()}")
 
 # =========================================================
-# MAP
+# FOLIUM MAP
 # =========================================================
 if not gdf_se.empty:
     minx, miny, maxx, maxy = gdf_se.total_bounds
     m = folium.Map(location=[(miny+maxy)/2,(minx+maxx)/2], zoom_start=13, tiles=None)
 
-    # Base maps
+    # Base layers
     folium.TileLayer("OpenStreetMap", name="OpenStreetMap").add_to(m)
-    folium.TileLayer(tiles="https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}",
-                     attr="Google", name="Google Satellite", overlay=False, control=True).add_to(m)
+    folium.TileLayer(tiles="https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}", attr="Google", name="Google Satellite").add_to(m)
 
-    # SE polygons
+    # SE polygon layer
     se_group = folium.FeatureGroup(name="SE Polygons", show=True)
     folium.GeoJson(
         gdf_se,
         tooltip=folium.GeoJsonTooltip(fields=["num_se","pop_se"], aliases=["SE","Population"]),
-        style_function=lambda feature: {"color":"blue","weight":3,"fillColor":"cyan","fillOpacity":0.4}
+        style_function=lambda f: {"color":"blue","weight":3,"fillColor":"cyan","fillOpacity":0.4}
     ).add_to(se_group)
     se_group.add_to(m)
 
-    # CSV points
+    # CSV points layer
     if csv_points_filtered is not None and not csv_points_filtered.empty:
         csv_group = folium.FeatureGroup(name="CSV Points", show=True)
         for _, r in csv_points_filtered.iterrows():
-            folium.CircleMarker(location=[r.geometry.y, r.geometry.x],
-                                radius=5, color="red", fill=True, fill_opacity=0.9,
-                                tooltip=f"Point Concession: SE {r.get('num_se','N/A')}").add_to(csv_group)
+            folium.CircleMarker(location=[r.geometry.y,r.geometry.x], radius=5, color="red", fill=True, fill_opacity=0.9, tooltip=f"Point SE {r.get('num_se','N/A')}").add_to(csv_group)
         csv_group.add_to(m)
 
     # Tools
@@ -210,42 +207,31 @@ if not gdf_se.empty:
     Draw(export=True).add_to(m)
     folium.LayerControl(collapsed=True).add_to(m)
 
+    # Fit map bounds
     m.fit_bounds([[miny,minx],[maxy,maxx]])
     st_folium(m, height=550, use_container_width=True)
 
 # =========================================================
-# DOWNLOAD & GOOGLE MAPS LINK (AUTO OPEN)
+# SE NAVIGATION & KML DOWNLOAD
 # =========================================================
-if se_selected != "No filter" and not gdf_se.empty:
+if se_selected!="No filter" and not gdf_se.empty:
     st.markdown("### 🧭 Navigate & Download Selected SE")
 
-    # Export selected SE to KML in memory
-    kml_buffer = io.BytesIO()
-    gdf_se.to_file(kml_buffer, driver="KML")
-    kml_bytes = kml_buffer.getvalue()
+    # Centroid button for Google Maps
+    centroid = gdf_se.geometry.unary_union.centroid
+    lat, lon = centroid.y, centroid.x
+    google_maps_url = f"https://www.google.com/maps/@{lat},{lon},18z"
+    st.markdown(f'<a href="{google_maps_url}" target="_blank"><button style="background-color:#4CAF50;color:white;padding:10px 20px;border:none;border-radius:5px;font-size:16px;">🚗 Open SE in Google Maps (centroid)</button></a>', unsafe_allow_html=True)
 
-    # Download button
-    st.download_button(
-        label="📥 Download SE Polygon (KML) for Google My Maps",
-        data=kml_bytes,
-        file_name=f"SE_{se_selected}.kml",
-        mime="application/vnd.google-earth.kml+xml"
-    )
-
-    # Convert KML bytes to base64 string for Google Maps
-    import base64
-    kml_base64 = base64.b64encode(kml_bytes).decode()
-
-    # Create a link to open KML in Google Maps using data URL
-    google_maps_kml_url = f"https://www.google.com/maps/d/u/0/viewer?mid=1&ll=0,0&z=5&kml=data:application/vnd.google-earth.kml+xml;base64,{kml_base64}"
-
-    st.markdown(
-        f'<a href="{google_maps_kml_url}" target="_blank">'
-        f'<button style="background-color:#4CAF50;color:white;padding:10px 20px;border:none;border-radius:5px;font-size:16px;">'
-        f'🚗 Open SE Polygon in Google Maps</button></a>',
-        unsafe_allow_html=True
-    )
-
+    # Create KML file for download
+    kml_path = f"Suivi_RICH/data/kml/SE_{se_selected}.kml"
+    if os.path.exists(kml_path):
+        with open(kml_path,"rb") as f:
+            kml_bytes = f.read()
+        st.download_button(label="📥 Download SE Polygon (KML) for Google My Maps", data=kml_bytes, file_name=f"SE_{se_selected}.kml", mime="application/vnd.google-earth.kml+xml")
+        st.info("To view the polygon in Google Maps, upload this KML to https://www.google.com/mymaps")
+    else:
+        st.warning(f"KML file for SE {se_selected} not found in repo.")
 
 # =========================================================
 # FOOTER
@@ -257,4 +243,3 @@ st.markdown("""
 **- Abdoul Karim DIAWARA**, Chef de Division Cartographie et SIG  
 **- Dr. Mahamadou CAMARA, PhD – Geomatics Engineering**  
 """)
-
