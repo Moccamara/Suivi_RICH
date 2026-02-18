@@ -199,10 +199,20 @@ if not gdf_se.empty:
 # =========================================================
 if se_selected != "No filter" and not gdf_se.empty:
     st.markdown("### 🧭 Navigate & Download Selected SE")
-    
-    # 1️⃣ Google Maps Button (centroid)
+
+    # 1️⃣ Display the SE polygon in a small Folium map
     centroid = gdf_se.geometry.unary_union.centroid
     lat, lon = centroid.y, centroid.x
+
+    m_se = folium.Map(location=[lat, lon], zoom_start=16)
+    folium.GeoJson(
+        gdf_se,
+        tooltip=folium.GeoJsonTooltip(fields=["num_se", "pop_se"], aliases=["SE", "Population"]),
+        style_function=lambda x: {"color": "blue", "weight": 2, "fillOpacity": 0.3}
+    ).add_to(m_se)
+    st_folium(m_se, height=400, use_container_width=True)
+
+    # 2️⃣ Google Maps Button (centroid)
     google_maps_url = f"https://www.google.com/maps/@{lat},{lon},18z"
     st.markdown(
         f'<a href="{google_maps_url}" target="_blank">'
@@ -211,19 +221,26 @@ if se_selected != "No filter" and not gdf_se.empty:
         unsafe_allow_html=True
     )
 
-    # 2️⃣ Download KML from repo
-    kml_path = f"Suivi_RICH/data/kml/SE_{se_selected}.kml"
-    if os.path.exists(kml_path):
-        with open(kml_path, "rb") as f:
-            kml_bytes = f.read()
+    # 3️⃣ Generate KML dynamically for download
+    try:
+        from simplekml import Kml
+        kml = Kml()
+        for geom in gdf_se.geometry:
+            if geom.geom_type == "Polygon":
+                kml.newpolygon(name=f"SE {se_selected}", outerboundaryis=list(geom.exterior.coords))
+            elif geom.geom_type == "MultiPolygon":
+                for poly in geom.geoms:
+                    kml.newpolygon(name=f"SE {se_selected}", outerboundaryis=list(poly.exterior.coords))
+        kml_bytes = kml.kml().encode("utf-8")
         st.download_button(
             label="📥 Download SE Polygon (KML) for Google My Maps",
             data=kml_bytes,
             file_name=f"SE_{se_selected}.kml",
             mime="application/vnd.google-earth.kml+xml"
         )
-    else:
-        st.warning(f"KML file for SE {se_selected} not found in repo.")
+    except ModuleNotFoundError:
+        st.warning("Install 'simplekml' package to enable KML download: pip install simplekml")
+
 
 # =========================================================
 # FOOTER
@@ -235,3 +252,4 @@ st.markdown("""
 **- Abdoul Karim DIAWARA**, Chef de Division Cartographie et SIG  
 **- Dr. Mahamadou CAMARA, PhD – Geomatics Engineering**  
 """)
+
