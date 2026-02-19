@@ -196,7 +196,7 @@ if not gdf_se.empty:
     folium.GeoJson(
         gdf_se,
         tooltip=folium.GeoJsonTooltip(fields=["num_se","pop_se"], aliases=["SE","Population"]),
-        style_function=lambda f: {"color":"blue","weight":3,"fillColor":"cyan","fillOpacity":0.4}
+        style_function=lambda f: {"color":"blue","weight":3,"fillColor":"red","fillOpacity":0.7}
     ).add_to(se_group)
     se_group.add_to(m)
 
@@ -264,6 +264,7 @@ st.markdown("""
 **- Abdoul Karim DIAWARA**, Chef de Division Cartographie et SIG  
 **- Dr. Mahamadou CAMARA, PhD – Geomatics Engineering**  
 """)
+
 
 
 
