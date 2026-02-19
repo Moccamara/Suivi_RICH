@@ -234,15 +234,13 @@ if se_selected != "No filter" and not gdf_se.empty:
     lat, lon = centroid.y, centroid.x
 
     # =====================================================
-    # DISPLAY MAP WITH RED POINT
+    # DISPLAY MAP WITH RED POINT (Streamlit)
     # =====================================================
     import folium
     from streamlit_folium import st_folium
 
-    # Create map centered on SE
     m = folium.Map(location=[lat, lon], zoom_start=18)
 
-    # Add SE polygon (optional but recommended)
     folium.GeoJson(
         gdf_se,
         name="Selected SE",
@@ -253,7 +251,6 @@ if se_selected != "No filter" and not gdf_se.empty:
         },
     ).add_to(m)
 
-    # Add RED centroid point
     folium.CircleMarker(
         location=[lat, lon],
         radius=8,
@@ -264,17 +261,17 @@ if se_selected != "No filter" and not gdf_se.empty:
         popup=f"SE {se_selected} Centroid"
     ).add_to(m)
 
-    # Display map in Streamlit
     st_folium(m, width=700, height=500)
 
     # =====================================================
-    # GOOGLE MAPS BUTTON
+    # GOOGLE MAPS BUTTON (WITH RED MARKER)
     # =====================================================
-    google_maps_url = f"https://www.google.com/maps/@{lat},{lon},18z"
+    google_maps_url = f"https://www.google.com/maps/search/?api=1&query={lat},{lon}"
+
     st.markdown(
         f'<a href="{google_maps_url}" target="_blank">'
         f'<button style="background-color:#4CAF50;color:white;padding:10px 20px;border:none;border-radius:5px;font-size:16px;">'
-        f'🚗 Open SE in Google Maps (centroid)</button></a>',
+        f'🚗 Open SE in Google Maps (with red marker)</button></a>',
         unsafe_allow_html=True
     )
 
@@ -297,6 +294,7 @@ if se_selected != "No filter" and not gdf_se.empty:
     else:
         st.warning(f"KML file for SE {se_selected} not found in repo.")
 
+
 # =========================================================
 # FOOTER
 # =========================================================
@@ -307,6 +305,7 @@ st.markdown("""
 **- Abdoul Karim DIAWARA**, Chef de Division Cartographie et SIG  
 **- Dr. Mahamadou CAMARA, PhD – Geomatics Engineering**  
 """)
+
 
 
 
