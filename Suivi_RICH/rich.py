@@ -229,9 +229,47 @@ if not gdf_se.empty:
 if se_selected != "No filter" and not gdf_se.empty:
     st.markdown("### 🧭 Navigate & Download Selected SE")
 
-    # Centroid button for Google Maps
+    # Compute centroid
     centroid = gdf_se.geometry.unary_union.centroid
     lat, lon = centroid.y, centroid.x
+
+    # =====================================================
+    # DISPLAY MAP WITH RED POINT
+    # =====================================================
+    import folium
+    from streamlit_folium import st_folium
+
+    # Create map centered on SE
+    m = folium.Map(location=[lat, lon], zoom_start=18)
+
+    # Add SE polygon (optional but recommended)
+    folium.GeoJson(
+        gdf_se,
+        name="Selected SE",
+        style_function=lambda x: {
+            "color": "blue",
+            "weight": 2,
+            "fillOpacity": 0.1,
+        },
+    ).add_to(m)
+
+    # Add RED centroid point
+    folium.CircleMarker(
+        location=[lat, lon],
+        radius=8,
+        color="red",
+        fill=True,
+        fill_color="red",
+        fill_opacity=1,
+        popup=f"SE {se_selected} Centroid"
+    ).add_to(m)
+
+    # Display map in Streamlit
+    st_folium(m, width=700, height=500)
+
+    # =====================================================
+    # GOOGLE MAPS BUTTON
+    # =====================================================
     google_maps_url = f"https://www.google.com/maps/@{lat},{lon},18z"
     st.markdown(
         f'<a href="{google_maps_url}" target="_blank">'
@@ -240,20 +278,25 @@ if se_selected != "No filter" and not gdf_se.empty:
         unsafe_allow_html=True
     )
 
-    # Create KML file for download (only selected SE)
+    # =====================================================
+    # KML DOWNLOAD
+    # =====================================================
     kml_path = f"Suivi_RICH/data/kml/SE_{se_selected}.kml"
     if os.path.exists(kml_path):
-        with open(kml_path,"rb") as f:
+        with open(kml_path, "rb") as f:
             kml_bytes = f.read()
+
         st.download_button(
             label="📥 Download SE Polygon (KML) for Google My Maps",
             data=kml_bytes,
             file_name=f"SE_{se_selected}.kml",
             mime="application/vnd.google-earth.kml+xml"
         )
+
         st.info("To view the polygon in Google Maps, upload this KML to https://www.google.com/mymaps")
     else:
         st.warning(f"KML file for SE {se_selected} not found in repo.")
+
 # =========================================================
 # FOOTER
 # =========================================================
@@ -264,6 +307,7 @@ st.markdown("""
 **- Abdoul Karim DIAWARA**, Chef de Division Cartographie et SIG  
 **- Dr. Mahamadou CAMARA, PhD – Geomatics Engineering**  
 """)
+
 
 
 
