@@ -234,36 +234,6 @@ if se_selected != "No filter" and not gdf_se.empty:
     lat, lon = centroid.y, centroid.x
 
     # =====================================================
-    # DISPLAY MAP WITH RED POINT (Streamlit)
-    # =====================================================
-    import folium
-    from streamlit_folium import st_folium
-
-    m = folium.Map(location=[lat, lon], zoom_start=18)
-
-    folium.GeoJson(
-        gdf_se,
-        name="Selected SE",
-        style_function=lambda x: {
-            "color": "blue",
-            "weight": 2,
-            "fillOpacity": 0.1,
-        },
-    ).add_to(m)
-
-    folium.CircleMarker(
-        location=[lat, lon],
-        radius=8,
-        color="red",
-        fill=True,
-        fill_color="red",
-        fill_opacity=1,
-        popup=f"SE {se_selected} Centroid"
-    ).add_to(m)
-
-    st_folium(m, width=700, height=500)
-
-    # =====================================================
     # GOOGLE MAPS BUTTON (WITH RED MARKER)
     # =====================================================
     google_maps_url = f"https://www.google.com/maps/search/?api=1&query={lat},{lon}"
@@ -305,6 +275,7 @@ st.markdown("""
 **- Abdoul Karim DIAWARA**, Chef de Division Cartographie et SIG  
 **- Dr. Mahamadou CAMARA, PhD – Geomatics Engineering**  
 """)
+
 
 
 
