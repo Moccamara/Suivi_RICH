@@ -8,10 +8,37 @@ import io
 import os
 
 # =========================================================
-# APP CONFIG
+# PAGE CONFIG (ILIAD STYLE)
 # =========================================================
-st.set_page_config(layout="wide", page_title="REACH–Mali Suivi")
-st.title("🌍 REACH–Mali Geospatial Data Monitoring Dashboard")
+st.set_page_config(
+    layout="wide",
+    page_title="REACH Mali WebGIS",
+    page_icon="🌍"
+)
+
+# Hide Streamlit default UI
+st.markdown("""
+<style>
+
+#MainMenu {visibility:hidden;}
+footer {visibility:hidden;}
+header {visibility:hidden;}
+
+.block-container{
+padding-top:1rem;
+}
+
+section[data-testid="stSidebar"]{
+background-color:#f4f6fa;
+}
+
+</style>
+""", unsafe_allow_html=True)
+
+# =========================================================
+# TITLE
+# =========================================================
+st.markdown("## 🌍 REACH–Mali Geospatial Monitoring WebGIS")
 
 # =========================================================
 # USERS
@@ -20,11 +47,11 @@ USERS = {
     "ro_rich": {"password": "rich2026rd", "role": "User", "lcercles": ["Kayes", "Kita"]},
     "fo_rich": {"password": "rich2026ft", "role": "User", "lcercles": ["Bafoulabe", "Kenieba"]},
     "bo_rich": {"password": "rich2026bk", "role": "User", "lcercles": ["Yelimane", "Nioro", "Diema"]},
-    "admin": {"password": "admin2026", "role": "Admin", "lcercles": []}  # Admin sees all
+    "admin": {"password": "admin2026", "role": "Admin", "lcercles": []}
 }
 
 # =========================================================
-# SESSION INIT
+# SESSION
 # =========================================================
 st.session_state.setdefault("auth_ok", False)
 st.session_state.setdefault("username", None)
@@ -33,7 +60,7 @@ st.session_state.setdefault("accessible_lcercles", [])
 st.session_state.setdefault("points_gdf", None)
 
 # =========================================================
-# LOGOUT FUNCTION
+# LOGOUT
 # =========================================================
 def logout():
     st.session_state.clear()
@@ -43,11 +70,18 @@ def logout():
 # LOGIN
 # =========================================================
 if not st.session_state.auth_ok:
-    st.sidebar.header("🔐 Login")
-    username = st.sidebar.text_input("Login")
+
+    st.sidebar.image("Suivi_RICH/logo/logos.jpg", width=250)
+
+    st.sidebar.header("🔐 REACH Login")
+
+    username = st.sidebar.text_input("Username")
     password = st.sidebar.text_input("Password", type="password")
+
     if st.sidebar.button("Login"):
+
         user = USERS.get(username)
+
         if user and password == user["password"]:
             st.session_state.auth_ok = True
             st.session_state.username = username
@@ -55,234 +89,182 @@ if not st.session_state.auth_ok:
             st.session_state.accessible_lcercles = user["lcercles"]
             st.rerun()
         else:
-            st.sidebar.error("❌ Invalid login or password")
-    st.stop()
+            st.sidebar.error("Invalid credentials")
 
-# =========================================================
-# LOAD SE POLYGONS
-# =========================================================
-@st.cache_data(show_spinner=False)
-def load_se_data():
-    gdf = gpd.read_file("Suivi_RICH/data/SE_Test.geojson")
-    if gdf.crs is None:
-        gdf = gdf.set_crs(epsg=4326)
-    else:
-        gdf = gdf.to_crs(epsg=4326)
-    gdf.columns = [c.strip() for c in gdf.columns]
-    for col in ["lregion","lcercle","lcommune","num_se","pop_se"]:
-        if col not in gdf.columns:
-            gdf[col] = None
-    gdf = gdf[gdf.is_valid & ~gdf.is_empty]
-    return gdf
-
-try:
-    gdf = load_se_data()
-except Exception as e:
-    st.error(f"❌ Unable to load RICH GeoJSON: {e}")
     st.stop()
 
 # =========================================================
 # SIDEBAR HEADER
 # =========================================================
 with st.sidebar:
-    st.image("Suivi_RICH/logo/logos.jpg", width=300)
-    st.markdown(f"**User:** {st.session_state.username} ({st.session_state.user_role})")
+
+    st.image("Suivi_RICH/logo/logos.jpg", width=250)
+
+    st.markdown("## REACH Mali")
+    st.markdown("Geospatial Monitoring")
+
+    st.markdown("---")
+
+    st.markdown("### 👤 User")
+
+    st.write(st.session_state.username)
+    st.write(st.session_state.user_role)
+
     if st.button("Logout"):
         logout()
 
 # =========================================================
-# HELPER FUNCTION
+# LOAD DATA
+# =========================================================
+@st.cache_data
+def load_data():
+
+    gdf = gpd.read_file("Suivi_RICH/data/SE_Test.geojson")
+
+    if gdf.crs is None:
+        gdf = gdf.set_crs(epsg=4326)
+    else:
+        gdf = gdf.to_crs(epsg=4326)
+
+    return gdf
+
+gdf = load_data()
+
+# =========================================================
+# FILTER FUNCTION
 # =========================================================
 def unique_clean(series):
-    if isinstance(series, pd.DataFrame): 
-        series = series.iloc[:,0]
-    return sorted(series.dropna().astype(str).str.strip().unique())
+    return sorted(series.dropna().astype(str).unique())
 
 # =========================================================
-# ATTRIBUTE FILTERS
+# FILTERS
 # =========================================================
-st.sidebar.markdown("### 🗂️ Attribute Query")
+st.sidebar.markdown("### 🗂️ Filters")
 
-# Region filter
-all_regions = unique_clean(gdf["lregion"])
-if st.session_state.user_role == "Admin":
-    regions = all_regions
-else:
-    user_cercles = st.session_state.accessible_lcercles
-    allowed_regions = gdf[gdf["lcercle"].isin(user_cercles)]["lregion"].unique()
-    regions = [r for r in all_regions if r in allowed_regions]
-
+# Region
+regions = unique_clean(gdf["lregion"])
 region = st.sidebar.selectbox("Region", regions)
+
 gdf_r = gdf[gdf["lregion"] == region]
 
-# Cercle filter
+# Cercle
 cercles = unique_clean(gdf_r["lcercle"])
-if st.session_state.user_role != "Admin":
-    cercles = [c for c in cercles if c in st.session_state.accessible_lcercles]
-
 cercle = st.sidebar.selectbox("Cercle", cercles)
+
 gdf_c = gdf_r[gdf_r["lcercle"] == cercle]
 
-# Commune filter
+# Commune
 communes = unique_clean(gdf_c["lcommune"])
 commune = st.sidebar.selectbox("Commune", communes)
+
 gdf_commune = gdf_c[gdf_c["lcommune"] == commune]
 
-# SE filter
+# SE
 se_list = ["No filter"] + unique_clean(gdf_commune["num_se"])
-se_selected = st.sidebar.selectbox("SE (num_se)", se_list)
+se_selected = st.sidebar.selectbox("SE", se_list)
+
 gdf_se = gdf_commune if se_selected=="No filter" else gdf_commune[gdf_commune["num_se"]==se_selected]
 
 # =========================================================
-# CSV POINTS UPLOAD
+# CSV UPLOAD
 # =========================================================
-st.sidebar.markdown("### 📥 Upload CSV Points")
-csv_file = st.sidebar.file_uploader("Upload CSV", type=["csv"])
-csv_points_filtered = None
+st.sidebar.markdown("### 📥 Upload CSV")
 
-if csv_file is not None:
-    content = csv_file.read().decode("utf-8", errors="ignore")
-    sep = "\t" if "\t" in content.splitlines()[0] else ";" if ";" in content.splitlines()[0] else ","
-    try:
-        df = pd.read_csv(io.StringIO(content), sep=sep, engine="python", on_bad_lines="skip", encoding="utf-8")
-    except Exception as e:
-        st.sidebar.error(f"❌ Failed to read CSV: {e}")
-        df = None
+csv_file = st.sidebar.file_uploader("Upload CSV", type="csv")
 
-    if df is not None and {"latitude", "longitude"}.issubset(df.columns):
-        df.columns = df.columns.str.lower().str.strip()
-        df["latitude"] = pd.to_numeric(df["latitude"], errors="coerce")
-        df["longitude"] = pd.to_numeric(df["longitude"], errors="coerce")
-        df = df.dropna(subset=["latitude","longitude"])
-        gpts = gpd.GeoDataFrame(df, geometry=gpd.points_from_xy(df["longitude"], df["latitude"]), crs="EPSG:4326")
-        st.session_state.points_gdf = gpts
+csv_points = None
 
-        # Filter points within selected commune
-        gdf_commune_proj = gdf_commune.to_crs(gpts.crs)
-        if "num_se" not in gdf_commune_proj.columns:
-            gdf_commune_proj["num_se"] = None
-        points_in_commune = gpd.sjoin(gpts, gdf_commune_proj[["geometry","num_se"]], how="inner", predicate="within")
-        num_se_col = "num_se" if "num_se" in points_in_commune.columns else "num_se_right"
-        points_in_commune["num_se"] = pd.to_numeric(points_in_commune[num_se_col], errors="coerce").astype("Int64")
-        points_in_commune["num_se_str"] = points_in_commune["num_se"].astype(str)
+if csv_file:
 
-        # CSV SE filter
-        valid_se_sorted = sorted(points_in_commune["num_se"].dropna().unique())
-        csv_se_list = ["No filter"] + [str(x) for x in valid_se_sorted]
-        csv_se_selected = st.sidebar.selectbox("CSV num_se", csv_se_list)
-        csv_points_filtered = points_in_commune if csv_se_selected=="No filter" else points_in_commune[points_in_commune["num_se_str"]==csv_se_selected]
-        st.sidebar.success(f"✅ {len(csv_points_filtered)} points in selected commune")
-    else:
-        st.sidebar.error(f"CSV must contain latitude & longitude columns. Found: {df.columns.tolist()}")
+    df = pd.read_csv(csv_file)
+
+    if {"latitude","longitude"}.issubset(df.columns):
+
+        csv_points = gpd.GeoDataFrame(
+            df,
+            geometry=gpd.points_from_xy(df.longitude, df.latitude),
+            crs="EPSG:4326"
+        )
 
 # =========================================================
-# FOLIUM MAP
+# MAP
 # =========================================================
 if not gdf_se.empty:
 
-    minx, miny, maxx, maxy = gdf_se.total_bounds
-    m = folium.Map(location=[(miny+maxy)/2,(minx+maxx)/2], zoom_start=13, tiles=None)
+    bounds = gdf_se.total_bounds
+
+    m = folium.Map(
+        location=[(bounds[1]+bounds[3])/2,(bounds[0]+bounds[2])/2],
+        zoom_start=12
+    )
 
     # Base layers
-    folium.TileLayer("OpenStreetMap", name="OpenStreetMap").add_to(m)
+    folium.TileLayer("OpenStreetMap").add_to(m)
+
     folium.TileLayer(
         tiles="https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}",
-        attr="Google",
         name="Google Satellite"
     ).add_to(m)
 
-    # SE polygon layer
-    se_group = folium.FeatureGroup(name="SE Polygons", show=True)
+    # Polygon
     folium.GeoJson(
         gdf_se,
-        tooltip=folium.GeoJsonTooltip(fields=["num_se","pop_se"], aliases=["SE","Population"]),
-        style_function=lambda f: {"color":"blue","weight":3,"fillColor":"red","fillOpacity":0.1}
-    ).add_to(se_group)
-    se_group.add_to(m)
+        tooltip=["num_se","pop_se"],
+        style_function=lambda x:{
+            "color":"blue",
+            "weight":2
+        }
+    ).add_to(m)
 
-    # CSV points layer
-    if csv_points_filtered is not None and not csv_points_filtered.empty:
-        csv_group = folium.FeatureGroup(name="CSV Points", show=True)
-        for _, r in csv_points_filtered.iterrows():
+    # CSV Points
+    if csv_points is not None:
+
+        for _,r in csv_points.iterrows():
+
             folium.CircleMarker(
-                location=[r.geometry.y,r.geometry.x],
-                radius=5,
-                color="red",
-                fill=True,
-                fill_opacity=0.9,
-                tooltip=f"Point SE {r.get('num_se','N/A')}"
-            ).add_to(csv_group)
-        csv_group.add_to(m)
+                [r.geometry.y,r.geometry.x],
+                radius=4,
+                color="red"
+            ).add_to(m)
 
-    # Tools
     MeasureControl().add_to(m)
-    Draw(export=True).add_to(m)
-    folium.LayerControl(collapsed=True).add_to(m)
+    Draw().add_to(m)
 
-    # Fit map bounds
-    m.fit_bounds([[miny,minx],[maxy,maxx]])
-    st_folium(m, height=550, use_container_width=True)
+    folium.LayerControl().add_to(m)
 
-# =========================================================
-# SE NAVIGATION & KML DOWNLOAD
-# =========================================================
-if se_selected != "No filter" and not gdf_se.empty:
-    st.markdown("### 🧭 Navigate & Download Selected SE")
-
-    # Compute centroid
-    centroid = gdf_se.geometry.unary_union.centroid
-    lat, lon = centroid.y, centroid.x
-
-    # =====================================================
-    # GOOGLE MAPS BUTTON (WITH RED MARKER)
-    # =====================================================
-    google_maps_url = f"https://www.google.com/maps/search/?api=1&query={lat},{lon}"
-
-    st.markdown(
-        f'<a href="{google_maps_url}" target="_blank">'
-        f'<button style="background-color:#4CAF50;color:white;padding:10px 20px;border:none;border-radius:5px;font-size:16px;">'
-        f'🚗 Open SE in Google Maps (with red marker)</button></a>',
-        unsafe_allow_html=True
+    st_folium(
+        m,
+        height=750,
+        use_container_width=True
     )
 
-    # =====================================================
-    # KML DOWNLOAD
-    # =====================================================
-    kml_path = f"Suivi_RICH/data/kml/SE_{se_selected}.kml"
-    if os.path.exists(kml_path):
-        with open(kml_path, "rb") as f:
-            kml_bytes = f.read()
+# =========================================================
+# GOOGLE MAPS
+# =========================================================
+if se_selected!="No filter":
 
-        st.download_button(
-            label="📥 Download SE Polygon (KML) for Google My Maps",
-            data=kml_bytes,
-            file_name=f"SE_{se_selected}.kml",
-            mime="application/vnd.google-earth.kml+xml"
-        )
+    centroid = gdf_se.geometry.unary_union.centroid
 
-        st.info("To view the polygon in Google Maps, upload this KML to https://www.google.com/mymaps")
-    else:
-        st.warning(f"KML file for SE {se_selected} not found in repo.")
+    lat = centroid.y
+    lon = centroid.x
 
+    url = f"https://www.google.com/maps/search/?api=1&query={lat},{lon}"
+
+    st.markdown(
+        f'<a href="{url}" target="_blank">'
+        f'<button style="background-color:#4CAF50;color:white;padding:10px 20px;border:none;border-radius:5px;">'
+        f'📍 Open in Google Maps</button></a>',
+        unsafe_allow_html=True
+    )
 
 # =========================================================
 # FOOTER
 # =========================================================
+st.markdown("---")
+
 st.markdown("""
----
-**REACH–MALI Geospatial Monitoring**  
+REACH Mali Monitoring System  
 
-**- Abdoul Karim DIAWARA**, Chef de Division Cartographie et SIG  
-**- Dr. Mahamadou CAMARA, PhD – Geomatics Engineering**  
+Dr. Mahamadou CAMARA  
+Geomatics Engineer
 """)
-
-
-
-
-
-
-
-
-
-
-
