@@ -10,8 +10,8 @@ import os
 # =========================================================
 # APP CONFIG
 # =========================================================
-st.set_page_config(layout="wide", page_title="REACH–Mali Suivi")
-st.title("🌍 REACH–Mali Geospatial Data Monitoring Dashboard")
+st.set_page_config(layout="wide", page_title="EMC1–Mali Suivi")
+st.title("🌍 EMC1–Mali Geospatial Data Monitoring Dashboard")
 
 # =========================================================
 # USERS
