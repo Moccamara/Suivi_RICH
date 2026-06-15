@@ -270,10 +270,22 @@ if se_selected != "No filter" and not gdf_se.empty:
 # =========================================================
 st.markdown("""
 ---
-**REACH–MALI Geospatial Monitoring**  
+### Système d’Information Agricole du Mali (SIAM)
+""")
 
-**- Abdoul Karim DIAWARA**, Chef de Division Cartographie et SIG  
-**- Dr. Mahamadou CAMARA, PhD – Geomatics Engineering**  
+logos_path = Path(__file__).parent / "AGeoAgri_Mali_2026" / "logos"
+logo_files = sorted(list(logos_path.glob("*")))
+
+if logo_files:
+    cols = st.columns(len(logo_files))
+    for col, logo in zip(cols, logo_files):
+        with col:
+            st.image(str(logo), width=150)
+
+st.markdown("""
+---
+
+ © Dr. Mahamadou CAMARA and Abdoul Karim DIAWARA
 """)
 
 
